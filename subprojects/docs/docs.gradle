@@ -100,6 +100,7 @@ ext {
     docsDir = file("$buildDir/docs")
     userguideDir = new File(docsDir, 'userguide')
     distDocsDir = new File(buildDir, 'distDocs')
+    releaseSummaryDir = new File(buildDir, 'releaseSummary')
     samplesDir = file("$buildDir/samples")
     docbookSrc = new File(project.buildDir, 'src')
     samplesSrcDir = file('src/samples')
@@ -111,6 +112,9 @@ outputs.samples = files(samplesDir) {
 }
 outputs.distDocs = files(distDocsDir) {
     builtBy 'distDocs'
+}
+outputs.releaseSummary = files(releaseSummaryDir) {
+    builtBy 'releaseSummary'
 }
 outputs.docs = files(docsDir) {
     builtBy 'javadocAll', 'userguide', 'dslHtml', 'releaseNotes'
@@ -472,6 +476,13 @@ task releaseNotes(type: Copy) {
     jsoup.plugins "src/transforms/release-notes.gradle"
     filter(ReplaceTokens, tokens: [version: project.version.toString(), baseVersion: rootProject.baseVersion])
     ext.entryPoint = file("$docsDir/$fileName")
+}
+
+task releaseSummary(type: Copy) {
+    description = "Copies release summary text file into docs for distribution"
+    group = "release notes"
+    from file("src/docs/release/release-summary.txt")
+    into releaseSummaryDir
 }
 
 tasks.addRule("view«Doc Task Name» - Opens entry point") { String taskName ->

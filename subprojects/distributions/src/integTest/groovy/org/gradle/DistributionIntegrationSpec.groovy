@@ -107,6 +107,7 @@ abstract class DistributionIntegrationSpec extends AbstractIntegrationSpec {
 
         // Top level files
         contentsDir.file('LICENSE').assertIsFile()
+        contentsDir.file('release-summary.txt').assertIsFile()
 
         // Core libs
         def coreLibs = contentsDir.file("lib").listFiles().findAll {

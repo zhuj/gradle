@@ -1,0 +1,8 @@
+Welcome to Gradle 4.7! New:
+
+ ❯ JUnit 5 support
+ 🕊 Initial BOM & optional dependencies compatibility
+ ⚡️ --fail-fast for tests
+ 🔨 Custom command-line flags for tasks
+
+Full release notes available at https://docs.gradle.org/4.7/release-notes.html

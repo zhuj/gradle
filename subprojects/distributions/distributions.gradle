@@ -55,6 +55,7 @@ ext {
     binDistImage = copySpec {
         from("$rootDir/LICENSE")
         from('src/toplevel')
+        from project(':docs').outputs.releaseSummary
         into('bin') {
             from { project(':launcher').startScripts.outputs.files }
             fileMode = 0755
