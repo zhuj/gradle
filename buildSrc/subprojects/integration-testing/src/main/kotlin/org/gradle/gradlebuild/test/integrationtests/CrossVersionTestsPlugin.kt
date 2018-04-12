@@ -62,7 +62,8 @@ class CrossVersionTestsPlugin : Plugin<Project> {
         val quickTestVersions = releasedVersions.getTestedVersions(true)
         releasedVersions.getTestedVersions(false).forEach { targetVersion ->
             val crossVersionTest = createTestTask("gradle${targetVersion}CrossVersionTest", "forking", sourceSet, TestType.CROSSVERSION)
-            crossVersionTest.apply {
+            // TODO: Make this lazy
+            crossVersionTest.get().apply {
                 description = "Runs the cross-version tests against Gradle $targetVersion"
                 systemProperties["org.gradle.integtest.versions"] = targetVersion
             }
