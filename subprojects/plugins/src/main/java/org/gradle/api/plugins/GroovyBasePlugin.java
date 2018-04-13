@@ -87,7 +87,7 @@ public class GroovyBasePlugin implements Plugin<Project> {
 
     private void configureSourceSetDefaults() {
         project.getConvention().getPlugin(JavaPluginConvention.class).getSourceSets().all(new Action<SourceSet>() {
-            public void execute(SourceSet sourceSet) {
+            public void execute(final SourceSet sourceSet) {
                 final DefaultGroovySourceSet groovySourceSet = new DefaultGroovySourceSet("groovy", ((DefaultSourceSet) sourceSet).getDisplayName(), sourceDirectorySetFactory);
                 new DslObject(sourceSet).getConvention().getPlugins().put("groovy", groovySourceSet);
 
@@ -101,11 +101,16 @@ public class GroovyBasePlugin implements Plugin<Project> {
                 sourceSet.getAllSource().source(groovySourceSet.getGroovy());
 
                 String compileTaskName = sourceSet.getCompileTaskName("groovy");
-                GroovyCompile compile = project.getTasks().create(compileTaskName, GroovyCompile.class);
-                SourceSetUtil.configureForSourceSet(sourceSet, groovySourceSet.getGroovy(), compile, compile.getOptions(), project);
-                compile.dependsOn(sourceSet.getCompileJavaTaskName());
-                compile.setDescription("Compiles the " + sourceSet.getName() + " Groovy source.");
-                compile.setSource(groovySourceSet.getGroovy());
+                project.getTasks().createLater(compileTaskName, GroovyCompile.class, new Action<GroovyCompile>() {
+                    @Override
+                    public void execute(GroovyCompile compile) {
+                        SourceSetUtil.configureForSourceSet(sourceSet, groovySourceSet.getGroovy(), compile, compile.getOptions(), project);
+                        compile.dependsOn(sourceSet.getCompileJavaTaskName());
+                        compile.setDescription("Compiles the " + sourceSet.getName() + " Groovy source.");
+                        compile.setSource(groovySourceSet.getGroovy());
+                    }
+                });
+
 
                 project.getTasks().getByName(sourceSet.getClassesTaskName()).dependsOn(compileTaskName);
             }

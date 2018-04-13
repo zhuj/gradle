@@ -33,6 +33,7 @@ import org.gradle.api.plugins.quality.CodeQualityExtension;
 import org.gradle.api.reporting.ReportingExtension;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
+import org.gradle.internal.Cast;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -57,7 +58,6 @@ public abstract class AbstractCodeQualityPlugin<T> implements Plugin<ProjectInte
         createConfigurations();
         extension = createExtension();
         configureExtensionRule();
-        configureTaskRule();
         configureSourceSetRule();
         configureCheckTask();
     }
@@ -136,20 +136,6 @@ public abstract class AbstractCodeQualityPlugin<T> implements Plugin<ProjectInte
         });
     }
 
-    private void configureTaskRule() {
-        project.getTasks().withType(getCastedTaskType(), new Action<Task>() {
-            @Override
-            public void execute(Task task) {
-                String prunedName = task.getName().replaceFirst(getTaskBaseName(), "");
-                if (prunedName.isEmpty()) {
-                    prunedName = task.getName();
-                }
-                prunedName = ("" + prunedName.charAt(0)).toLowerCase() + prunedName.substring(1);
-                configureTaskDefaults((T) task, prunedName);
-            }
-        });
-    }
-
     protected void configureTaskDefaults(T task, String baseName) {
     }
 
@@ -165,9 +151,21 @@ public abstract class AbstractCodeQualityPlugin<T> implements Plugin<ProjectInte
     private void configureForSourceSets(SourceSetContainer sourceSets) {
         sourceSets.all(new Action<SourceSet>() {
             @Override
-            public void execute(SourceSet sourceSet) {
-                Task task = project.getTasks().create(sourceSet.getTaskName(getTaskBaseName(), null), getCastedTaskType());
-                configureForSourceSet(sourceSet, (T)task);
+            public void execute(final SourceSet sourceSet) {
+                project.getTasks().createLater(sourceSet.getTaskName(getTaskBaseName(), null), getCastedTaskType(), new Action<Task>() {
+                    @Override
+                    public void execute(Task task) {
+                        String prunedName = task.getName().replaceFirst(getTaskBaseName(), "");
+                        if (prunedName.isEmpty()) {
+                            prunedName = task.getName();
+                        }
+                        prunedName = ("" + prunedName.charAt(0)).toLowerCase() + prunedName.substring(1);
+                        T castedTask = Cast.uncheckedCast(task);
+                        // TODO: This is wrong because it'll run after withType rules
+                        configureTaskDefaults(castedTask, prunedName);
+                        configureForSourceSet(sourceSet, castedTask);
+                    }
+                });
             }
         });
     }
