@@ -48,7 +48,7 @@ parallelIntegTest {
     systemProperty "org.gradle.userguide.samples.exclude", "multiProjectBuildSrc,multiprojectMessagesHack"
 }
 
+import org.gradle.gradlebuild.testing.integrationtests.cleanup.WhenNotEmpty
 testFilesCleanup {
-    errorWhenNotEmpty = false
+    policy = WhenNotEmpty.REPORT
 }
-
