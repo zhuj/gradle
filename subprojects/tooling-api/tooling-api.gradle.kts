@@ -136,7 +136,7 @@ tasks.create<Upload>("publishLocalArchives") {
 
 val integTestTasks: DomainObjectCollection<IntegrationTest> by extra
 
-integTestTasks.all {
+integTestTasks.configureEachLater { 
     binaryDistributions.binZipRequired = true
     libsRepository.required = true
 }
