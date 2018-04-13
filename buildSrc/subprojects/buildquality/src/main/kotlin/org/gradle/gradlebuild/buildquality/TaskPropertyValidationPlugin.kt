@@ -85,12 +85,12 @@ fun Project.addValidateTask() =
                 outputFile.set(reporting.baseDirectory.file(reportFileName))
                 failOnWarning = true
             }
+            tasks.configureEachLater(Test::class.java) {
+                shouldRunAfter(validateTask)
+            }
             tasks {
                 "codeQuality" {
                     dependsOn(validateTask)
-                }
-                withType<Test> {
-                    shouldRunAfter(validateTask)
                 }
             }
         }

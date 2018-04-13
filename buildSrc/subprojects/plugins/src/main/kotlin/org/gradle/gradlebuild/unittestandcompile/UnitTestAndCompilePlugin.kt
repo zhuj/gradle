@@ -162,7 +162,7 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
     fun Project.configureTests() {
         val javaInstallationForTest = rootProject.availableJavaInstallations.javaInstallationForTest
 
-        tasks.withType<Test>().all {
+        tasks.configureEachLater(Test::class.java) {
             maxParallelForks = project.maxParallelForks
             jvmArgumentProviders.add(createCiEnvironmentProvider(this))
             executable = Jvm.forHome(javaInstallationForTest.javaHome).javaExecutable.absolutePath

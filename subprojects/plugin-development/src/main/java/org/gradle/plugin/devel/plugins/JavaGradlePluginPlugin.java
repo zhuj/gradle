@@ -371,7 +371,7 @@ public class JavaGradlePluginPlugin implements Plugin<Project> {
             DependencyHandler dependencies = project.getDependencies();
             Set<SourceSet> testSourceSets = extension.getTestSourceSets();
             project.getNormalization().getRuntimeClasspath().ignore(PluginUnderTestMetadata.METADATA_FILE_NAME);
-            project.getTasks().withType(Test.class, new Action<Test>() {
+            project.getTasks().configureEachLater(Test.class, new Action<Test>() {
                 @Override
                 public void execute(Test test) {
                     test.getInputs().files(pluginClasspathTask.getPluginClasspath())

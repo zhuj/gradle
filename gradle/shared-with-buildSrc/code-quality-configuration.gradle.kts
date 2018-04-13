@@ -100,16 +100,17 @@ fun Project.configureCodenarc(codeQualityConfigDir: File) {
 }
 
 
-fun Project.configureCodeQualityTasks() =
+fun Project.configureCodeQualityTasks() {
+    val codeQualityTasks = tasks.matching { it is CodeNarc || it is Checkstyle }
     tasks {
-        val codeQualityTasks = matching { it is CodeNarc || it is Checkstyle }
         "codeQuality" {
             dependsOn(codeQualityTasks)
         }
-        withType<Test> {
-            shouldRunAfter(codeQualityTasks)
-        }
     }
+    tasks.configureEachLater(Test::class.java) {
+        shouldRunAfter(codeQualityTasks)
+    }
+}
 
 
 val Project.java
