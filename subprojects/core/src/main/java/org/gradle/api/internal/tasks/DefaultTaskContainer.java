@@ -508,6 +508,7 @@ public class DefaultTaskContainer extends DefaultTaskCollection<Task> implements
                     if (task == null) {
                         task = createTask(name, type, NO_ARGS);
                         statistics.lazyTaskRealized();
+                        statistics.lazyTaskRealized(type);
                         add(task);
                         configureAction.execute(task);
                         configureAction = null;
