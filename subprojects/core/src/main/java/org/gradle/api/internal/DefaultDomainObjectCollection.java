@@ -170,7 +170,7 @@ public class DefaultDomainObjectCollection<T> extends AbstractCollection<T> impl
         }
         if (copied != null) {
             for (T t : copied) {
-                action.execute(t);
+                configureAddedThing(t, action);
             }
         }
     }
@@ -181,7 +181,7 @@ public class DefaultDomainObjectCollection<T> extends AbstractCollection<T> impl
         Iterator<T> iterator = iteratorNoFlush();
         while (iterator.hasNext()) {
             T next = iterator.next();
-            action.execute(next);
+            configureAddedThing(next, action);
         }
     }
 
@@ -243,11 +243,16 @@ public class DefaultDomainObjectCollection<T> extends AbstractCollection<T> impl
     private boolean doAdd(T toAdd) {
         if (getStore().add(toAdd)) {
             didAdd(toAdd);
-            eventRegister.getAddAction().execute(toAdd);
+            configureAddedThing(toAdd, eventRegister.getAddAction());
             return true;
         } else {
             return false;
         }
+    }
+
+    // TODO: Hack
+    public void configureAddedThing(T toAdd, Action<? super T> action) {
+        action.execute(toAdd);
     }
 
     @Override

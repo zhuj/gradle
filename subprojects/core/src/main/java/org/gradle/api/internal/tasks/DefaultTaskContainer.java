@@ -87,10 +87,15 @@ public class DefaultTaskContainer extends DefaultTaskCollection<Task> implements
     public DefaultTaskContainer(MutableModelNode modelNode, ProjectInternal project, Instantiator instantiator, ITaskFactory taskFactory, ProjectAccessListener projectAccessListener, TaskStatistics statistics) {
         super(Task.class, instantiator, project);
         this.modelNode = modelNode;
-        this.taskFactory = taskFactory;
+        this.taskFactory = new MeasuredTaskFactory(taskFactory, statistics.getElapsedCreationTimeBucket());
         this.projectAccessListener = projectAccessListener;
         this.statistics = statistics;
         this.eagerlyCreateLazyTasks = Boolean.getBoolean(EAGERLY_CREATE_LAZY_TASKS_PROPERTY);
+    }
+
+    @Override
+    public void configureAddedThing(Task toAdd, Action action) {
+        super.configureAddedThing(toAdd, new MeasuredAction(action, statistics.getElapsedConfigurationTimeBucket()));
     }
 
     public Task create(Map<String, ?> options) {
@@ -234,6 +239,10 @@ public class DefaultTaskContainer extends DefaultTaskCollection<Task> implements
                 throw new NullPointerException(String.format("Received null for %s constructor argument #%s", type.getName(), i + 1));
             }
         }
+        return createTaskByFactory(name, type, constructorArgs);
+    }
+
+    private <T extends Task> T createTaskByFactory(final String name, final Class<T> type, final Object[] constructorArgs) {
         return taskFactory.create(name, type, constructorArgs);
     }
 
@@ -243,7 +252,7 @@ public class DefaultTaskContainer extends DefaultTaskCollection<Task> implements
 
     public Task create(String name, Action<? super Task> configureAction) throws InvalidUserDataException {
         Task task = create(name);
-        configureAction.execute(task);
+        configureAddedThing(task, configureAction);
         return task;
     }
 
@@ -265,7 +274,7 @@ public class DefaultTaskContainer extends DefaultTaskCollection<Task> implements
 
     public <T extends Task> T create(String name, Class<T> type, Action<? super T> configuration) throws InvalidUserDataException {
         T task = create(name, type);
-        configuration.execute(task);
+        configureAddedThing(task, configuration);
         return task;
     }
 
@@ -288,7 +297,7 @@ public class DefaultTaskContainer extends DefaultTaskCollection<Task> implements
     }
 
     public <T extends Task> T replace(String name, Class<T> type) {
-        T task = taskFactory.create(name, type);
+        T task = createTaskByFactory(name, type, NO_ARGS);
         return addTask(task, true);
     }
 
@@ -452,8 +461,8 @@ public class DefaultTaskContainer extends DefaultTaskCollection<Task> implements
         @Override
         public void execute(final MutableModelNode mutableModelNode) {
             DefaultTaskContainer taskContainer = mutableModelNode.getParent().getPrivateData(ModelType.of(DefaultTaskContainer.class));
-            T task = taskContainer.taskFactory.create(placeholderName, taskType);
-            configure.execute(task);
+            T task = taskContainer.createTaskByFactory(placeholderName, taskType, NO_ARGS);
+            taskContainer.configureAddedThing(task, configure);
             taskContainer.add(task);
             mutableModelNode.setPrivateData(taskModelType, task);
         }
@@ -509,7 +518,7 @@ public class DefaultTaskContainer extends DefaultTaskCollection<Task> implements
                         task = createTask(name, type, NO_ARGS);
                         statistics.lazyTaskRealized(type);
                         add(task);
-                        configureAction.execute(task);
+                        configureAddedThing(task, configureAction);
                         configureAction = null;
                     }
                 }

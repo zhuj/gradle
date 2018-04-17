@@ -29,6 +29,7 @@ import java.io.PrintWriter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TaskStatistics implements Closeable {
@@ -41,6 +42,8 @@ public class TaskStatistics implements Closeable {
     private final Map<Class, Integer> typeCounts = Maps.newHashMap();
     private final Map<Class, Integer> realizedTypeCounts = Maps.newHashMap();
     private final boolean collectStatistics;
+    private final Bucket elapsedConfigurationTime;
+    private final Bucket elapsedCreationTime;
 
     private PrintWriter lazyTaskLog;
 
@@ -58,6 +61,8 @@ public class TaskStatistics implements Closeable {
         } else {
             collectStatistics = false;
         }
+        elapsedConfigurationTime = new Bucket("total configuration time");
+        elapsedCreationTime = new Bucket("total creation time");
     }
 
     public void eagerTask(Class<?> type) {
@@ -99,10 +104,20 @@ public class TaskStatistics implements Closeable {
         }
     }
 
+    public Bucket getElapsedConfigurationTimeBucket() {
+        return elapsedConfigurationTime;
+    }
+
+    public Bucket getElapsedCreationTimeBucket() {
+        return elapsedCreationTime;
+    }
+
     @Override
     public void close() throws IOException {
         if (collectStatistics) {
-            LOGGER.lifecycle("E {} L {} LR {}", eagerTasks.getAndSet(0), lazyTasks.getAndSet(0), lazyRealizedTasks.getAndSet(0));
+            LOGGER.lifecycle("E {} L {} LR {}, config {} ms, create {} ms", eagerTasks.getAndSet(0), lazyTasks.getAndSet(0), lazyRealizedTasks.getAndSet(0),
+                TimeUnit.NANOSECONDS.toMillis(elapsedConfigurationTime.getMeasurement()),
+                TimeUnit.NANOSECONDS.toMillis(elapsedCreationTime.getMeasurement()));
             printTypeCounts("Task types that were eagerly created", typeCounts);
             printTypeCounts("Lazy task types that were realized", realizedTypeCounts);
             IoActions.closeQuietly(lazyTaskLog);
