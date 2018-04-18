@@ -16,7 +16,9 @@
 
 package org.gradle.execution.taskgraph
 
+import org.gradle.api.Task
 import org.gradle.api.internal.TaskInternal
+import org.junit.Assume
 
 class NewWorkExecutionPlanTest extends AbstractTaskExecutionPlanTest {
 
@@ -42,5 +44,17 @@ class NewWorkExecutionPlanTest extends AbstractTaskExecutionPlanTest {
             executionPlan.finishedExecuting(nextTask)
         }
         return tasks
+    }
+
+    @Override
+    void shouldRunAfter(TaskInternal task, List<Task> shouldRunAfterTasks) {
+        Assume.assumeTrue("shouldRunAfter is not yet supported", shouldRunAfterTasks.isEmpty())
+        super.shouldRunAfter(task, shouldRunAfterTasks)
+    }
+
+    @Override
+    void finalizedBy(TaskInternal task, List<Task> finalizedByTasks) {
+        Assume.assumeTrue("finalizedBy is not yet supported", finalizedByTasks.isEmpty())
+        super.finalizedBy(task, finalizedByTasks)
     }
 }

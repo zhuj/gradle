@@ -18,6 +18,7 @@ package org.gradle.execution.taskgraph;
 
 import com.google.common.base.Functions;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Ordering;
@@ -76,7 +77,11 @@ public class NewWorkExecutionPlan {
 
             if (!alreadyVisited) {
                 visitingNodes.add(node);
-                Iterator<TaskInfo> descendingIterator = new ArrayDeque<TaskInfo>(node.getDependencySuccessors()).descendingIterator();
+                Iterator<TaskInfo> descendingIterator =
+                    Iterators.concat(
+                        new ArrayDeque<TaskInfo>(node.getDependencySuccessors()).descendingIterator(),
+                        new ArrayDeque<TaskInfo>(node.getMustSuccessors()).descendingIterator()
+                    );
                 while (descendingIterator.hasNext()) {
                     TaskInfo dependency = descendingIterator.next();
                     if (visitingNodes.contains(dependency)) {
