@@ -21,16 +21,9 @@ import org.gradle.api.BuildCancelledException
 import org.gradle.api.CircularReferenceException
 import org.gradle.api.Task
 import org.gradle.api.internal.GradleInternal
-import org.gradle.api.internal.TaskInputsInternal
 import org.gradle.api.internal.TaskInternal
-import org.gradle.api.internal.TaskOutputsInternal
 import org.gradle.api.internal.project.ProjectInternal
-import org.gradle.api.internal.tasks.TaskDestroyablesInternal
-import org.gradle.api.internal.tasks.TaskLocalStateInternal
-import org.gradle.api.internal.tasks.TaskStateInternal
 import org.gradle.api.specs.Spec
-import org.gradle.api.tasks.TaskDependency
-import org.gradle.api.tasks.TaskDestroyables
 import org.gradle.execution.TaskFailureHandler
 import org.gradle.initialization.BuildCancellationToken
 import org.gradle.internal.resources.ResourceLock
@@ -38,17 +31,14 @@ import org.gradle.internal.resources.ResourceLockCoordinationService
 import org.gradle.internal.resources.ResourceLockState
 import org.gradle.internal.work.WorkerLeaseRegistry
 import org.gradle.internal.work.WorkerLeaseService
-import org.gradle.test.fixtures.AbstractProjectBuilderSpec
-import org.gradle.util.Path
 import org.gradle.util.TextUtil
 import spock.lang.Issue
 import spock.lang.Unroll
 
-import static org.gradle.util.TestUtil.createRootProject
 import static org.gradle.util.TextUtil.toPlatformLineSeparators
 import static org.gradle.util.WrapUtil.toList
 
-class DefaultTaskExecutionPlanTest extends AbstractProjectBuilderSpec {
+class DefaultTaskExecutionPlanTest extends AbstractTaskExecutionPlanTest {
 
     DefaultTaskExecutionPlan executionPlan
     ProjectInternal root
@@ -57,11 +47,8 @@ class DefaultTaskExecutionPlanTest extends AbstractProjectBuilderSpec {
     def coordinationService = Mock(ResourceLockCoordinationService)
     def workerLease = Mock(WorkerLeaseRegistry.WorkerLease)
     def gradle = Mock(GradleInternal)
-    def failureCollector = new TaskFailureCollector()
-    def workGraph = new WorkGraph(failureCollector)
 
     def setup() {
-        root = createRootProject(temporaryFolder.testDirectory)
         executionPlan = new DefaultTaskExecutionPlan(workGraph, cancellationHandler, coordinationService, workerLeaseService, Mock(GradleInternal), failureCollector)
         _ * workerLeaseService.getProjectLock(_, _) >> Mock(ResourceLock) {
             _ * isLocked() >> false
@@ -72,63 +59,6 @@ class DefaultTaskExecutionPlanTest extends AbstractProjectBuilderSpec {
             args[0].transform(Mock(ResourceLockState))
             return true
         }
-    }
-
-    def "schedules tasks in dependency order"() {
-        given:
-        Task a = task("a")
-        Task b = task("b", dependsOn: [a])
-        Task c = task("c", dependsOn: [b, a])
-        Task d = task("d", dependsOn: [c])
-
-        when:
-        addToGraphAndPopulate([d])
-
-        then:
-        executes(a, b, c, d)
-    }
-
-    def "schedules task dependencies in name order when there are no dependencies between them"() {
-        given:
-        Task a = task("a")
-        Task b = task("b")
-        Task c = task("c")
-        Task d = task("d", dependsOn: [b, a, c])
-
-        when:
-        addToGraphAndPopulate([d])
-
-        then:
-        executes(a, b, c, d)
-    }
-
-    def "schedules a single batch of tasks in name order"() {
-        given:
-        Task a = task("a")
-        Task b = task("b")
-        Task c = task("c")
-
-        when:
-        addToGraphAndPopulate(toList(b, c, a))
-
-        then:
-        executes(a, b, c)
-    }
-
-    def "schedules separately added tasks in order added"() {
-        given:
-        Task a = task("a")
-        Task b = task("b")
-        Task c = task("c")
-        Task d = task("d")
-
-        when:
-        workGraph.addToTaskGraph(toList(c, b))
-        workGraph.addToTaskGraph(toList(d, a))
-        executionPlan.determineExecutionPlan()
-
-        then:
-        executes(b, c, a, d)
     }
 
     @Unroll
@@ -147,35 +77,6 @@ class DefaultTaskExecutionPlanTest extends AbstractProjectBuilderSpec {
 
         where:
         orderingRule << ['mustRunAfter', 'shouldRunAfter']
-    }
-
-    def "common tasks in separate batches are schedules only once"() {
-        Task a = task("a")
-        Task b = task("b")
-        Task c = task("c", dependsOn: [a, b])
-        Task d = task("d")
-        Task e = task("e", dependsOn: [b, d])
-
-        when:
-        workGraph.addToTaskGraph(toList(c))
-        workGraph.addToTaskGraph(toList(e))
-        executionPlan.determineExecutionPlan()
-
-        then:
-        executes(a, b, c, d, e)
-    }
-
-    def "all dependencies scheduled when adding tasks"() {
-        Task a = task("a")
-        Task b = task("b", dependsOn: [a])
-        Task c = task("c", dependsOn: [b, a])
-        Task d = task("d", dependsOn: [c])
-
-        when:
-        addToGraphAndPopulate(toList(d))
-
-        then:
-        executes(a, b, c, d)
     }
 
     @Unroll
@@ -467,28 +368,6 @@ class DefaultTaskExecutionPlanTest extends AbstractProjectBuilderSpec {
 
         where:
         orderingRule << ['dependsOn', 'mustRunAfter' , 'shouldRunAfter']
-    }
-
-    def "cannot add task with circular reference"() {
-        Task a = createTask("a")
-        Task b = task("b", dependsOn: [a])
-        Task c = task("c", dependsOn: [b])
-        Task d = task("d")
-        relationships(a, dependsOn: [c, d])
-
-        when:
-        addToGraphAndPopulate([c])
-
-        then:
-        def e = thrown CircularReferenceException
-        e.message == TextUtil.toPlatformLineSeparators("""Circular dependency between the following tasks:
-:a
-\\--- :c
-     \\--- :b
-          \\--- :a (*)
-
-(*) - details omitted (listed previously)
-""")
     }
 
     def "cannot add a task with must run after induced circular reference"() {
@@ -796,43 +675,6 @@ class DefaultTaskExecutionPlanTest extends AbstractProjectBuilderSpec {
         executes(b)
     }
 
-    def "does not build graph for or execute filtered tasks"() {
-        given:
-        Task a = filteredTask("a")
-        Task b = task("b")
-        Spec<Task> filter = Mock()
-
-        and:
-        filter.isSatisfiedBy(_) >> { Task t -> t != a }
-
-        when:
-        workGraph.useFilter(filter)
-        addToGraphAndPopulate([a, b])
-
-        then:
-        executes(b)
-        filtered(a)
-    }
-
-    def "does not build graph for or execute filtered dependencies"() {
-        given:
-        Task a = filteredTask("a")
-        Task b = task("b")
-        Task c = task("c", dependsOn: [a, b])
-        Spec<Task> filter = Mock()
-
-        and:
-        filter.isSatisfiedBy(_) >> { Task t -> t != a }
-
-        when:
-        workGraph.useFilter(filter)
-        addToGraphAndPopulate([c])
-
-        then:
-        executes(b, c)
-        filtered(a)
-    }
-
     @Unroll
     def "does not build graph for or execute filtered tasks reachable via #orderingRule task ordering"() {
         given:
@@ -856,46 +698,20 @@ class DefaultTaskExecutionPlanTest extends AbstractProjectBuilderSpec {
         orderingRule << ['mustRunAfter', 'shouldRunAfter']
     }
 
-    def "will execute a task whose dependencies have been filtered"() {
-        given:
-        Task b = filteredTask("b")
-        Task c = task("c", dependsOn: [b])
-        Spec<Task> filter = Mock()
-
-        and:
-        filter.isSatisfiedBy(_) >> { Task t -> t != b }
-
-        when:
-        workGraph.useFilter(filter)
-        addToGraphAndPopulate([c])
-
-        then:
-        executes(c)
-        filtered(b)
-    }
-
-    private void addToGraphAndPopulate(List tasks) {
-        workGraph.addToTaskGraph(tasks)
-        executionPlan.determineExecutionPlan()
-    }
-
     private TaskFailureHandler createIgnoreTaskFailureHandler(Task task) {
         Mock(TaskFailureHandler) {
             onTaskFailure(task) >> {}
         }
     }
 
-    void executes(Task... expectedTasks) {
-        assert executionPlan.tasks == expectedTasks as List
-        assert expectedTasks == expectedTasks as List
+    @Override
+    void determineExecutionPlan() {
+        executionPlan.determineExecutionPlan()
     }
 
-    void filtered(Task... expectedTasks) {
-        assert workGraph.filteredTasks == expectedTasks as Set
-    }
-
-    def getExecutedTasks() {
-        def tasks = []
+    @Override
+    List<TaskInternal> getExecutedTasks() {
+        List<TaskInternal> tasks = []
         def moreTasks = true
         while (moreTasks) {
             moreTasks = executionPlan.executeWithTask(workerLease, new Action<TaskInternal>() {
@@ -906,108 +722,6 @@ class DefaultTaskExecutionPlanTest extends AbstractProjectBuilderSpec {
             })
         }
         return tasks
-    }
-
-    private TaskDependency taskDependencyResolvingTo(TaskInternal task, List<Task> tasks) {
-        Mock(TaskDependency) {
-            getDependencies(task) >> tasks
-        }
-    }
-
-    private TaskDependency brokenDependencies() {
-        Mock(TaskDependency) {
-            0 * getDependencies(_)
-        }
-    }
-
-    private void dependsOn(TaskInternal task, List<Task> dependsOnTasks) {
-        task.getTaskDependencies() >> taskDependencyResolvingTo(task, dependsOnTasks)
-    }
-
-    private void mustRunAfter(TaskInternal task, List<Task> mustRunAfterTasks) {
-        task.getMustRunAfter() >> taskDependencyResolvingTo(task, mustRunAfterTasks)
-    }
-
-    private void finalizedBy(TaskInternal task, List<Task> finalizedByTasks) {
-        task.getFinalizedBy() >> taskDependencyResolvingTo(task, finalizedByTasks)
-    }
-
-    private void shouldRunAfter(TaskInternal task, List<Task> shouldRunAfterTasks) {
-        task.getShouldRunAfter() >> taskDependencyResolvingTo(task, shouldRunAfterTasks)
-    }
-
-    private void failure(TaskInternal task, final RuntimeException failure) {
-        task.state.getFailure() >> failure
-        task.state.rethrowFailure() >> { throw failure }
-    }
-
-    private TaskInternal task(final String name) {
-        task([:], name)
-    }
-
-    private TaskOutputsInternal emptyTaskOutputs() {
-        Stub(TaskOutputsInternal)
-    }
-
-    private TaskDestroyables emptyTaskDestroys() {
-        Stub(TaskDestroyablesInternal)
-    }
-
-    private TaskLocalStateInternal emptyTaskLocalState() {
-        Stub(TaskLocalStateInternal)
-    }
-
-    private TaskInputsInternal emptyTaskInputs() {
-        Stub(TaskInputsInternal)
-    }
-
-    private TaskInternal task(Map options, final String name) {
-        def task = createTask(name)
-        relationships(options, task)
-        if (options.failure) {
-            failure(task, options.failure)
-        }
-        task.getDidWork() >> (options.containsKey('didWork') ? options.didWork : true)
-        task.getOutputs() >> emptyTaskOutputs()
-        task.getDestroyables() >> emptyTaskDestroys()
-        task.getLocalState() >> emptyTaskLocalState()
-        task.getInputs() >> emptyTaskInputs()
-        return task
-    }
-
-    private void relationships(Map options, TaskInternal task) {
-        dependsOn(task, options.dependsOn ?: [])
-        mustRunAfter(task, options.mustRunAfter ?: [])
-        shouldRunAfter(task, options.shouldRunAfter ?: [])
-        finalizedBy(task, options.finalizedBy ?: [])
-    }
-
-    private TaskInternal filteredTask(final String name) {
-        def task = createTask(name)
-        task.getTaskDependencies() >> brokenDependencies()
-        task.getMustRunAfter() >> brokenDependencies()
-        task.getShouldRunAfter() >> brokenDependencies()
-        task.getFinalizedBy() >> taskDependencyResolvingTo(task, [])
-        return task
-    }
-
-    private TaskInternal createTask(final String name) {
-        TaskInternal task = Mock()
-        TaskStateInternal state = Mock()
-        task.getProject() >> root
-        task.name >> name
-        task.path >> ':' + name
-        task.identityPath >> Path.path(':' + name)
-        task.state >> state
-        task.toString() >> "task $name"
-        task.compareTo(_ as TaskInternal) >> { TaskInternal taskInternal ->
-            return name.compareTo(taskInternal.getName())
-        }
-        task.getOutputs() >> emptyTaskOutputs()
-        task.getDestroyables() >> emptyTaskDestroys()
-        task.getLocalState() >> emptyTaskLocalState()
-        task.getInputs() >> emptyTaskInputs()
-        return task
     }
 }
 
