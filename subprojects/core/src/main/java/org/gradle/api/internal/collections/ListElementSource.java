@@ -118,4 +118,7 @@ public class ListElementSource<T> implements IndexedElementSource<T> {
     public void clear() {
         values.clear();
     }
+
+    @Override
+    public void flushPending() { }
 }

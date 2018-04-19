@@ -48,4 +48,6 @@ public interface ElementSource<T> extends Iterable<T>, WithEstimatedSize {
     boolean remove(Object o);
 
     int size();
+
+    void flushPending();
 }

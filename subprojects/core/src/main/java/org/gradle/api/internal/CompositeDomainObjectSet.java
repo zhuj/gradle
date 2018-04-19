@@ -244,5 +244,8 @@ public class CompositeDomainObjectSet<T> extends DelegatingDomainObjectSet<T> im
             }
             return size;
         }
+
+        @Override
+        public void flushPending() { }
     }
 }

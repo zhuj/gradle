@@ -160,4 +160,9 @@ public class FilteredCollection<T, S extends T> implements ElementSource<S> {
         }
         return i;
     }
+
+    @Override
+    public void flushPending() {
+        collection.flushPending();
+    }
 }

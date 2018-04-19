@@ -77,4 +77,7 @@ public class SortedSetElementSource<T> implements ElementSource<T> {
     public void clear() {
         values.clear();
     }
+
+    @Override
+    public void flushPending() { }
 }

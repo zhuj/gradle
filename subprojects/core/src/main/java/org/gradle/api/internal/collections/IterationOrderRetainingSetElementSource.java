@@ -73,4 +73,7 @@ public class IterationOrderRetainingSetElementSource<T> implements ElementSource
     public void clear() {
         values.clear();
     }
+
+    @Override
+    public void flushPending() { }
 }

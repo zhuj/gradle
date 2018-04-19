@@ -124,10 +124,12 @@ public class DefaultDomainObjectCollection<T> extends AbstractCollection<T> impl
         if (store.constantTimeIsEmpty()) {
             return Iterators.emptyIterator();
         }
+
         return new IteratorImpl(store.iterator());
     }
 
     protected void flushPending() {
+        store.flushPending();
         if (pending != null) {
             for (ProviderInternal<? extends T> provider : pending) {
                 doAdd(provider.get());
@@ -492,7 +494,6 @@ public class DefaultDomainObjectCollection<T> extends AbstractCollection<T> impl
 
         @Override
         public Iterator<T> iterator() {
-            flushPending(filter.getType());
             return iteratorNoFlush();
         }
 
@@ -509,6 +510,11 @@ public class DefaultDomainObjectCollection<T> extends AbstractCollection<T> impl
         @Override
         public void clear() {
             throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void flushPending() {
+            DefaultDomainObjectCollection.this.flushPending(filter.getType());
         }
     }
 }

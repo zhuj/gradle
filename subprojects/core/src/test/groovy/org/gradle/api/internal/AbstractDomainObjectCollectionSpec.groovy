@@ -427,12 +427,14 @@ abstract class AbstractDomainObjectCollectionSpec<T> extends Specification {
 
         given:
         container.addLater(provider1)
+        container.add(b)
         container.addLater(provider2)
 
         when:
         container.configureEachLater(type, action)
 
         then:
+        1 * action.execute(b)
         0 * _
 
         when:
