@@ -17,6 +17,7 @@
 package org.gradle.execution.taskgraph;
 
 import com.google.common.base.Functions;
+import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.LinkedHashMultimap;
@@ -38,6 +39,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,7 +47,7 @@ import java.util.Set;
 public class NewWorkExecutionPlan {
 
     private final Multimap<TaskInfo, GraphEdge> incomingEdges = LinkedHashMultimap.create();
-    private final Multimap <TaskInfo, GraphEdge> outgoingEdges = LinkedHashMultimap.create();
+    private final Multimap<TaskInfo, GraphEdge> outgoingEdges = LinkedHashMultimap.create();
     private final Set<TaskInfo> nodes = new HashSet<TaskInfo>();
     private final ArrayList<TaskInfo> readyToExecute = new ArrayList<TaskInfo>();
     private final Map<TaskInfo, Integer> nodeIndex = new HashMap<TaskInfo, Integer>();
@@ -57,6 +59,7 @@ public class NewWorkExecutionPlan {
     }
 
     public void determineExecutionPlan() {
+        breakCycles();
         int currentIndex = 0;
         Deque<TaskInfo> nodeQueue = new ArrayDeque<TaskInfo>();
         Iterables.addAll(nodeQueue, workGraph.getEntryTasks());
@@ -79,8 +82,9 @@ public class NewWorkExecutionPlan {
                 visitingNodes.add(node);
                 Iterator<TaskInfo> descendingIterator =
                     Iterators.concat(
-                        new ArrayDeque<TaskInfo>(node.getDependencySuccessors()).descendingIterator(),
-                        new ArrayDeque<TaskInfo>(node.getMustSuccessors()).descendingIterator()
+                        node.getDependencySuccessors().descendingIterator(),
+                        node.getMustSuccessors().descendingIterator(),
+                        node.getShouldSuccessors().descendingIterator()
                     );
                 while (descendingIterator.hasNext()) {
                     TaskInfo dependency = descendingIterator.next();
@@ -110,8 +114,120 @@ public class NewWorkExecutionPlan {
         Collections.sort(readyToExecute, nodeOrderingByIndex);
     }
 
+    private void breakCycles() {
+        Deque<TaskInfo> nodeQueue = new ArrayDeque<TaskInfo>();
+        Iterables.addAll(nodeQueue, workGraph.getEntryTasks());
+
+        Set<TaskInfo> visitingNodes = new HashSet<TaskInfo>();
+        Deque<TaskInfo> path = new ArrayDeque<TaskInfo>();
+        Deque<GraphEdge> walkedShouldRunAfterEdges = new ArrayDeque<GraphEdge>();
+        List<TaskInfo> selectedNodes = new LinkedList<TaskInfo>();
+        HashMap<TaskInfo, Integer> planBeforeVisiting = new HashMap<TaskInfo, Integer>();
+
+        while (!nodeQueue.isEmpty()) {
+            TaskInfo node = nodeQueue.getFirst();
+
+            if (node.isIncludeInGraph() || selectedNodes.contains(node)) {
+                nodeQueue.removeFirst();
+                visitingNodes.remove(node);
+                maybeRemoveProcessedShouldRunAfterEdge(walkedShouldRunAfterEdges, node);
+                continue;
+            }
+
+            boolean alreadyVisited = visitingNodes.contains(node);
+
+            if (!alreadyVisited) {
+                visitingNodes.add(node);
+                recordEdgeIfArrivedViaShouldRunAfter(walkedShouldRunAfterEdges, path, node);
+                removeShouldRunAfterSuccessorsIfTheyImposeACycle(visitingNodes, node);
+                takePlanSnapshotIfCanBeRestoredToCurrentTask(planBeforeVisiting, selectedNodes, node);
+                Iterator<TaskInfo> descendingIterator =
+                    Iterators.concat(
+                        node.getDependencySuccessors().descendingIterator(),
+                        node.getMustSuccessors().descendingIterator(),
+                        node.getShouldSuccessors().descendingIterator()
+                    );
+                while (descendingIterator.hasNext()) {
+                    TaskInfo dependency = descendingIterator.next();
+                    if (visitingNodes.contains(dependency)) {
+                        if (!walkedShouldRunAfterEdges.isEmpty()) {
+                            //remove the last walked should run after edge and restore state from before walking it
+                            GraphEdge toBeRemoved = walkedShouldRunAfterEdges.pop();
+                            toBeRemoved.from.removeShouldRunAfterSuccessor(toBeRemoved.to);
+                            restorePath(path, toBeRemoved);
+                            restoreQueue(nodeQueue, visitingNodes, toBeRemoved);
+                            restoreSelectedNodes(planBeforeVisiting, selectedNodes, toBeRemoved);
+                            break;
+                        } else {
+                            onOrderingCycle();
+                        }
+                    }
+                    if (!dependency.isIncludeInGraph()) {
+                        nodeQueue.addFirst(dependency);
+                    }
+                }
+                path.push(node);
+            } else {
+                // Have visited this task's dependencies - add it to the end of the plan
+                nodeQueue.removeFirst();
+                maybeRemoveProcessedShouldRunAfterEdge(walkedShouldRunAfterEdges, node);
+                visitingNodes.remove(node);
+                path.pop();
+                selectedNodes.add(node);
+            }
+        }
+    }
+
     private boolean isReadyToExecute(TaskInfo node) {
         return !outgoingEdges.containsKey(node);
+    }
+
+    private void maybeRemoveProcessedShouldRunAfterEdge(Deque<GraphEdge> walkedShouldRunAfterEdges, TaskInfo taskNode) {
+        if (!walkedShouldRunAfterEdges.isEmpty() && walkedShouldRunAfterEdges.peek().to.equals(taskNode)) {
+            walkedShouldRunAfterEdges.pop();
+        }
+    }
+
+    private void recordEdgeIfArrivedViaShouldRunAfter(Deque<GraphEdge> walkedShouldRunAfterEdges, Deque<TaskInfo> path, TaskInfo taskNode) {
+        if (!path.isEmpty() && path.peek().getShouldSuccessors().contains(taskNode)) {
+            walkedShouldRunAfterEdges.push(new GraphEdge(path.peek(), taskNode));
+        }
+    }
+
+    private void removeShouldRunAfterSuccessorsIfTheyImposeACycle(final Set<TaskInfo> visitingNodes, final TaskInfo taskNode) {
+        Iterables.removeIf(taskNode.getShouldSuccessors(), new Predicate<TaskInfo>() {
+            public boolean apply(TaskInfo input) {
+                return visitingNodes.contains(input);
+            }
+        });
+    }
+
+    private void takePlanSnapshotIfCanBeRestoredToCurrentTask(HashMap<TaskInfo, Integer> planBeforeVisiting, List<TaskInfo> selectedNodes, TaskInfo taskNode) {
+        if (taskNode.getShouldSuccessors().size() > 0) {
+            planBeforeVisiting.put(taskNode, selectedNodes.size());
+        }
+    }
+
+    private void restorePath(Deque<TaskInfo> path, GraphEdge toBeRemoved) {
+        TaskInfo removedFromPath = null;
+        while (!toBeRemoved.from.equals(removedFromPath)) {
+            removedFromPath = path.pop();
+        }
+    }
+
+    private void restoreQueue(Deque<TaskInfo> nodeQueue, Set<TaskInfo> visitingNodes, GraphEdge toBeRemoved) {
+        TaskInfo nextInQueue = null;
+        while (!toBeRemoved.from.equals(nextInQueue)) {
+            nextInQueue = nodeQueue.getFirst();
+            visitingNodes.remove(nextInQueue);
+            if (!toBeRemoved.from.equals(nextInQueue)) {
+                nodeQueue.removeFirst();
+            }
+        }
+    }
+
+    private void restoreSelectedNodes(HashMap<TaskInfo, Integer> planBeforeVisiting, List<TaskInfo> selectedNodes, GraphEdge toBeRemoved) {
+        selectedNodes.subList(planBeforeVisiting.get(toBeRemoved.from), selectedNodes.size()).clear();
     }
 
     private void onOrderingCycle() {

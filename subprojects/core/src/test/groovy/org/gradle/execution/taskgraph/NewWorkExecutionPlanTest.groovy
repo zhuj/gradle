@@ -47,12 +47,6 @@ class NewWorkExecutionPlanTest extends AbstractTaskExecutionPlanTest {
     }
 
     @Override
-    void shouldRunAfter(TaskInternal task, List<Task> shouldRunAfterTasks) {
-        Assume.assumeTrue("shouldRunAfter is not yet supported", shouldRunAfterTasks.isEmpty())
-        super.shouldRunAfter(task, shouldRunAfterTasks)
-    }
-
-    @Override
     void finalizedBy(TaskInternal task, List<Task> finalizedByTasks) {
         Assume.assumeTrue("finalizedBy is not yet supported", finalizedByTasks.isEmpty())
         super.finalizedBy(task, finalizedByTasks)
