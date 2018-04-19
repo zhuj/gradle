@@ -90,7 +90,7 @@ class DistributionTestingPlugin : Plugin<Project> {
     fun DistributionTest.configureGradleTestEnvironment(providers: ProviderFactory, layout: ProjectLayout, basePluginConvention: BasePluginConvention) {
         // TODO: Replace this with something in the Gradle API to make this transition easier
         fun dirWorkaround(directory: () -> File): Provider<Directory> =
-            layout.directoryProperty().dir(providers.provider { directory().absolutePath })
+            layout.directoryProperty(layout.projectDirectory.dir(providers.provider { directory().absolutePath }))
 
         // TODO Refactor to not reach into tasks of another project
         val intTestImage: Sync by project.tasks
