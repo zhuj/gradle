@@ -16,14 +16,18 @@
 
 package org.gradle.execution.taskgraph;
 
+import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import com.google.common.base.Predicate;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Ordering;
 import org.gradle.api.CircularReferenceException;
+import org.gradle.api.Task;
 import org.gradle.internal.graph.CachingDirectedGraphWalker;
 import org.gradle.internal.graph.DirectedGraph;
 import org.gradle.internal.graph.DirectedGraphRenderer;
@@ -39,6 +43,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +53,7 @@ public class NewWorkExecutionPlan {
 
     private final Multimap<TaskInfo, GraphEdge> incomingEdges = LinkedHashMultimap.create();
     private final Multimap<TaskInfo, GraphEdge> outgoingEdges = LinkedHashMultimap.create();
-    private final Set<TaskInfo> nodes = new HashSet<TaskInfo>();
+    private final Set<TaskInfo> nodes = new LinkedHashSet<TaskInfo>();
     private final ArrayList<TaskInfo> readyToExecute = new ArrayList<TaskInfo>();
     private final Map<TaskInfo, Integer> nodeIndex = new HashMap<TaskInfo, Integer>();
     private final Ordering<TaskInfo> nodeOrderingByIndex = Ordering.<Integer>natural().onResultOf(Functions.forMap(nodeIndex));
@@ -59,13 +64,13 @@ public class NewWorkExecutionPlan {
     }
 
     public void determineExecutionPlan() {
+        Iterable<TaskInfo> entryTasks = discoverAllTasksToExecute(workGraph.getEntryTasks());
         breakCycles();
         int currentIndex = 0;
         Deque<TaskInfo> nodeQueue = new ArrayDeque<TaskInfo>();
-        Iterables.addAll(nodeQueue, workGraph.getEntryTasks());
+        Iterables.addAll(nodeQueue, entryTasks);
 
         HashSet<TaskInfo> visitingNodes = new HashSet<TaskInfo>();
-        Deque<TaskInfo> path = new ArrayDeque<TaskInfo>();
 
         while (!nodeQueue.isEmpty()) {
             TaskInfo node = nodeQueue.getFirst();
@@ -98,12 +103,10 @@ public class NewWorkExecutionPlan {
                         nodeQueue.addFirst(dependency);
                     }
                 }
-                path.push(node);
             } else {
                 // Have visited this task's dependencies - add it to the end of the plan
                 nodeQueue.removeFirst();
                 visitingNodes.remove(node);
-                path.pop();
                 nodes.add(node);
                 nodeIndex.put(node, currentIndex++);
                 if (isReadyToExecute(node)) {
@@ -112,6 +115,61 @@ public class NewWorkExecutionPlan {
             }
         }
         Collections.sort(readyToExecute, nodeOrderingByIndex);
+    }
+
+    private Iterable<TaskInfo> discoverAllTasksToExecute(Iterable<TaskInfo> entryTasks) {
+        List<TaskInfo> entryTasksAndFinalizers = new ArrayList<TaskInfo>();
+        Set<TaskInfo> visitingNodes = new HashSet<TaskInfo>();
+        Deque<TaskInfo> nodeQueue = new ArrayDeque<TaskInfo>();
+        Iterables.addAll(nodeQueue, entryTasks);
+        List<TaskInfo> finalizers = new ArrayList<TaskInfo>();
+
+        while (!nodeQueue.isEmpty()) {
+            TaskInfo node = nodeQueue.getFirst();
+
+            if (node.isIncludeInGraph() || entryTasksAndFinalizers.contains(node)) {
+                nodeQueue.removeFirst();
+                visitingNodes.remove(node);
+                continue;
+            }
+
+            boolean alreadyVisited = visitingNodes.contains(node);
+
+            if (!alreadyVisited) {
+                visitingNodes.add(node);
+                Iterator<TaskInfo> descendingIterator = node.getDependencySuccessors().descendingIterator();
+                while (descendingIterator.hasNext()) {
+                    TaskInfo dependency = descendingIterator.next();
+                    if (!visitingNodes.contains(dependency) && !dependency.isIncludeInGraph()) {
+                        nodeQueue.addFirst(dependency);
+                    }
+                }
+            } else {
+                // Have visited this task's dependencies - add it to the end of the plan
+                nodeQueue.removeFirst();
+                visitingNodes.remove(node);
+                entryTasksAndFinalizers.add(node);
+                for (Iterator<TaskInfo> it = node.getFinalizers().descendingIterator(); it.hasNext(); ) {
+                    TaskInfo finalizer = it.next();
+                    if (visitingNodes.contains(finalizer) || entryTasksAndFinalizers.contains(finalizer)) {
+                        continue;
+                    }
+                    nodeQueue.addFirst(finalizer);
+                    finalizers.add(finalizer);
+                }
+            }
+        }
+        entryTasksAndFinalizers.retainAll(ImmutableSet.<TaskInfo>builder().addAll(entryTasks).addAll(finalizers).build());
+        return entryTasksAndFinalizers;
+    }
+
+    public List<Task> getTasks() {
+        return FluentIterable.from(nodes).transform(new Function<TaskInfo, Task>() {
+            @Override
+            public Task apply(TaskInfo input) {
+                return input.getTask();
+            }
+        }).toList();
     }
 
     private void breakCycles() {
