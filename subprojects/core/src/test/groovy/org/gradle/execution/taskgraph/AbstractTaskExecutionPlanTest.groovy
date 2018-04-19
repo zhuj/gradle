@@ -428,6 +428,18 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
         orderingRule << ['dependsOn', 'mustRunAfter' , 'shouldRunAfter']
     }
 
+    def "dependencies of finalizer task can be task dependencies"() {
+        Task dependency = task("dependency")
+        Task finalizer = task("finalizer", dependsOn: [dependency])
+        Task finalized = task("finalized", finalizedBy: [finalizer], dependsOn: [dependency])
+
+        when:
+        addToGraphAndPopulate([finalized])
+
+        then:
+        executes(dependency, finalized, finalizer)
+    }
+
     def "cannot add task with circular reference"() {
         Task a = createTask("a")
         Task b = task("b", dependsOn: [a])
