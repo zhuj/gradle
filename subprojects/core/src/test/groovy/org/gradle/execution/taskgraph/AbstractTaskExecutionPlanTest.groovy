@@ -115,7 +115,7 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
         when:
         workGraph.addToTaskGraph(toList(c))
         workGraph.addToTaskGraph(toList(e))
-        executionPlan.determineExecutionPlan()
+        determineExecutionPlan()
 
         then:
         executes(a, b, c, d, e)
@@ -161,7 +161,7 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
         when:
         workGraph.addToTaskGraph([c])
         workGraph.addToTaskGraph([b])
-        executionPlan.determineExecutionPlan()
+        determineExecutionPlan()
 
         then:
         executes(a, b, c)
@@ -311,10 +311,22 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
         when:
         workGraph.addToTaskGraph([finalized])
         workGraph.addToTaskGraph([dependsOnFinalizer])
-        executionPlan.determineExecutionPlan()
+        determineExecutionPlan()
 
         then:
         executes(finalized, finalizerDependency, finalizer, dependsOnFinalizer)
+    }
+
+    def "finalizer tasks are executed if the task did not do any work"() {
+        Task finalizer = task("finalizer")
+        Task finalized = task("finalized", finalizedBy: [finalizer], didWork: false)
+
+        when:
+        workGraph.addToTaskGraph([finalized])
+        determineExecutionPlan()
+
+        then:
+        executes(finalized, finalizer)
     }
 
     def "finalizer tasks run as soon as possible for tasks that depend on finalized tasks"() {
@@ -493,7 +505,7 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
 
         when:
         workGraph.addToTaskGraph([a])
-        executionPlan.determineExecutionPlan()
+        determineExecutionPlan()
 
         then:
         def e = thrown CircularReferenceException
