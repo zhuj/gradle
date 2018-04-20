@@ -51,8 +51,8 @@ import java.util.Set;
 
 public class NewWorkExecutionPlan {
 
-    private final Multimap<TaskInfo, GraphEdge> incomingEdges = LinkedHashMultimap.create();
     private final Multimap<TaskInfo, GraphEdge> outgoingEdges = LinkedHashMultimap.create();
+    private final Multimap<TaskInfo, GraphEdge> incomingEdges = LinkedHashMultimap.create();
     private final Set<TaskInfo> nodes = new LinkedHashSet<TaskInfo>();
     private final ArrayList<TaskInfo> readyToExecute = new ArrayList<TaskInfo>();
     private final Map<TaskInfo, Integer> nodeIndex = new HashMap<TaskInfo, Integer>();
@@ -97,9 +97,10 @@ public class NewWorkExecutionPlan {
                         onOrderingCycle();
                     }
                     if (!dependency.isIncludeInGraph()) {
-                        GraphEdge edge = new GraphEdge(node, dependency);
-                        outgoingEdges.put(node, edge);
-                        incomingEdges.put(dependency, edge);
+                        boolean propagateFailure = node.getDependencySuccessors().contains(dependency);
+                        GraphEdge edge = new GraphEdge(dependency, node, propagateFailure);
+                        incomingEdges.put(node, edge);
+                        outgoingEdges.put(dependency, edge);
                         nodeQueue.addFirst(dependency);
                     }
                 }
@@ -211,7 +212,7 @@ public class NewWorkExecutionPlan {
                         if (!walkedShouldRunAfterEdges.isEmpty()) {
                             //remove the last walked should run after edge and restore state from before walking it
                             GraphEdge toBeRemoved = walkedShouldRunAfterEdges.pop();
-                            toBeRemoved.from.removeShouldRunAfterSuccessor(toBeRemoved.to);
+                            toBeRemoved.to.removeShouldRunAfterSuccessor(toBeRemoved.from);
                             restorePath(path, toBeRemoved);
                             restoreQueue(nodeQueue, visitingNodes, toBeRemoved);
                             restoreSelectedNodes(planBeforeVisiting, selectedNodes, toBeRemoved);
@@ -237,18 +238,18 @@ public class NewWorkExecutionPlan {
     }
 
     private boolean isReadyToExecute(TaskInfo node) {
-        return !outgoingEdges.containsKey(node);
+        return !incomingEdges.containsKey(node);
     }
 
     private void maybeRemoveProcessedShouldRunAfterEdge(Deque<GraphEdge> walkedShouldRunAfterEdges, TaskInfo taskNode) {
-        if (!walkedShouldRunAfterEdges.isEmpty() && walkedShouldRunAfterEdges.peek().to.equals(taskNode)) {
+        if (!walkedShouldRunAfterEdges.isEmpty() && walkedShouldRunAfterEdges.peek().from.equals(taskNode)) {
             walkedShouldRunAfterEdges.pop();
         }
     }
 
     private void recordEdgeIfArrivedViaShouldRunAfter(Deque<GraphEdge> walkedShouldRunAfterEdges, Deque<TaskInfo> path, TaskInfo taskNode) {
         if (!path.isEmpty() && path.peek().getShouldSuccessors().contains(taskNode)) {
-            walkedShouldRunAfterEdges.push(new GraphEdge(path.peek(), taskNode));
+            walkedShouldRunAfterEdges.push(new GraphEdge(taskNode, path.peek(), true));
         }
     }
 
@@ -268,24 +269,24 @@ public class NewWorkExecutionPlan {
 
     private void restorePath(Deque<TaskInfo> path, GraphEdge toBeRemoved) {
         TaskInfo removedFromPath = null;
-        while (!toBeRemoved.from.equals(removedFromPath)) {
+        while (!toBeRemoved.to.equals(removedFromPath)) {
             removedFromPath = path.pop();
         }
     }
 
     private void restoreQueue(Deque<TaskInfo> nodeQueue, Set<TaskInfo> visitingNodes, GraphEdge toBeRemoved) {
         TaskInfo nextInQueue = null;
-        while (!toBeRemoved.from.equals(nextInQueue)) {
+        while (!toBeRemoved.to.equals(nextInQueue)) {
             nextInQueue = nodeQueue.getFirst();
             visitingNodes.remove(nextInQueue);
-            if (!toBeRemoved.from.equals(nextInQueue)) {
+            if (!toBeRemoved.to.equals(nextInQueue)) {
                 nodeQueue.removeFirst();
             }
         }
     }
 
     private void restoreSelectedNodes(HashMap<TaskInfo, Integer> planBeforeVisiting, List<TaskInfo> selectedNodes, GraphEdge toBeRemoved) {
-        selectedNodes.subList(planBeforeVisiting.get(toBeRemoved.from), selectedNodes.size()).clear();
+        selectedNodes.subList(planBeforeVisiting.get(toBeRemoved.to), selectedNodes.size()).clear();
     }
 
     private void onOrderingCycle() {
@@ -322,15 +323,31 @@ public class NewWorkExecutionPlan {
 
     public void finishedExecuting(TaskInfo node) {
         readyToExecute.remove(node);
-        for (GraphEdge graphEdge : incomingEdges.get(node)) {
-            TaskInfo dependentNode = graphEdge.from;
-            outgoingEdges.remove(dependentNode, graphEdge);
-            if (isReadyToExecute(dependentNode)) {
+        boolean taskFailure = node.isFailed();
+        for (GraphEdge graphEdge : outgoingEdges.get(node)) {
+            TaskInfo dependentNode = graphEdge.to;
+            incomingEdges.remove(dependentNode, graphEdge);
+            if (taskFailure && graphEdge.propagateFailure) {
+                nodeSkipped(dependentNode);
+            } else if (isReadyToExecute(dependentNode)) {
                 readyToExecute.add(dependentNode);
             }
         }
-        incomingEdges.removeAll(node);
+        outgoingEdges.removeAll(node);
         Collections.sort(readyToExecute, nodeOrderingByIndex);
+    }
+
+    private void nodeSkipped(TaskInfo node) {
+        readyToExecute.remove(node);
+        for (GraphEdge graphEdge : outgoingEdges.get(node)) {
+            TaskInfo dependentNode = graphEdge.to;
+            incomingEdges.remove(dependentNode, graphEdge);
+            nodeSkipped(dependentNode);
+        }
+        for (GraphEdge graphEdge : incomingEdges.get(node)) {
+            outgoingEdges.get(graphEdge.from).remove(graphEdge);
+        }
+        outgoingEdges.removeAll(node);
     }
 
     public Iterable<TaskInfo> getReadyToExecute() {
@@ -340,10 +357,12 @@ public class NewWorkExecutionPlan {
     private static class GraphEdge {
         private final TaskInfo from;
         private final TaskInfo to;
+        private final boolean propagateFailure;
 
-        private GraphEdge(TaskInfo from, TaskInfo to) {
+        private GraphEdge(TaskInfo from, TaskInfo to, boolean propagateFailure) {
             this.from = from;
             this.to = to;
+            this.propagateFailure = propagateFailure;
         }
     }
 }
