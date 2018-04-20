@@ -15,6 +15,7 @@
  */
 package org.gradle.gradlebuild.test.integrationtests
 
+import org.gradle.api.Action
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.tasks.SourceSet
@@ -61,12 +62,11 @@ class CrossVersionTestsPlugin : Plugin<Project> {
 
         val quickTestVersions = releasedVersions.getTestedVersions(true)
         releasedVersions.getTestedVersions(false).forEach { targetVersion ->
-            val crossVersionTest = createTestTask("gradle${targetVersion}CrossVersionTest", "forking", sourceSet, TestType.CROSSVERSION)
-            // TODO: Make this lazy
-            crossVersionTest.get().apply {
-                description = "Runs the cross-version tests against Gradle $targetVersion"
-                systemProperties["org.gradle.integtest.versions"] = targetVersion
-            }
+            val crossVersionTest = createTestTask("gradle${targetVersion}CrossVersionTest", "forking", sourceSet, TestType.CROSSVERSION, Action {
+                this.description = "Runs the cross-version tests against Gradle $targetVersion"
+                this.systemProperties["org.gradle.integtest.versions"] = targetVersion
+            })
+
             allVersionsCrossVersionTests.dependsOn(crossVersionTest)
             if (targetVersion in quickTestVersions) {
                 quickFeedbackCrossVersionTests.dependsOn(crossVersionTest)

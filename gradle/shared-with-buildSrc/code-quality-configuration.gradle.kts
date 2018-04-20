@@ -91,7 +91,7 @@ fun Project.configureCodenarc(codeQualityConfigDir: File) {
         configFile = codeQualityConfigDir.resolve("codenarc.xml")
     }
 
-    tasks.withType<CodeNarc> {
+    tasks.configureEachLater(CodeNarc::class.java) {
         reports.xml.isEnabled = true
         if (name.contains("IntegTest")) {
             configFile = codeQualityConfigDir.resolve("codenarc-integtests.xml")
