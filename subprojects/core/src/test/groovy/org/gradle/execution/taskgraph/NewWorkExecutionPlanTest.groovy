@@ -43,4 +43,9 @@ class NewWorkExecutionPlanTest extends AbstractTaskExecutionPlanTest {
         }
         return tasks
     }
+
+    @Override
+    void ignoreTaskFailure(TaskInternal finalizedDependency) {
+        executionPlan.ignoreFailures()
+    }
 }

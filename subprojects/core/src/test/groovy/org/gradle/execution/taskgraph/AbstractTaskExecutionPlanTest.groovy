@@ -28,7 +28,6 @@ import org.gradle.api.internal.tasks.TaskStateInternal
 import org.gradle.api.specs.Spec
 import org.gradle.api.tasks.TaskDependency
 import org.gradle.api.tasks.TaskDestroyables
-import org.gradle.execution.TaskFailureHandler
 import org.gradle.test.fixtures.AbstractProjectBuilderSpec
 import org.gradle.util.Path
 import spock.lang.Issue
@@ -315,6 +314,21 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
 
         then:
         executes(finalized, finalizerDependency, finalizer, dependsOnFinalizer)
+    }
+
+    def "finalizer tasks and their dependencies are executed if they are previously required even if the finalized task did not run"() {
+        Task finalizerDependency = task("finalizerDependency")
+        Task finalizer = task("finalizer", dependsOn: [finalizerDependency])
+        Task finalizedDependency = task("finalizedDependency", failure: new RuntimeException("failure"))
+        Task finalized = task("finalized", dependsOn: [finalizedDependency], finalizedBy: [finalizer])
+        ignoreTaskFailure(finalizedDependency)
+
+        when:
+        addToGraphAndPopulate([finalizer, finalized])
+
+        then:
+        executionPlan.tasks == [finalizedDependency, finalized, finalizerDependency, finalizer]
+        executedTasks == [finalizedDependency, finalizerDependency, finalizer]
     }
 
     def "finalizer tasks are executed if the task did not do any work"() {
@@ -786,9 +800,5 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
         Stub(TaskInputsInternal)
     }
 
-    TaskFailureHandler createIgnoreTaskFailureHandler(Task task) {
-        Mock(TaskFailureHandler) {
-            onTaskFailure(task) >> {}
-        }
-    }
+    abstract void ignoreTaskFailure(TaskInternal finalizedDependency)
 }

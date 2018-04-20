@@ -56,21 +56,6 @@ class DefaultTaskExecutionPlanTest extends AbstractTaskExecutionPlanTest {
         }
     }
 
-    def "finalizer tasks and their dependencies are executed if they are previously required even if the finalized task did not run"() {
-        Task finalizerDependency = task("finalizerDependency")
-        Task finalizer = task("finalizer", dependsOn: [finalizerDependency])
-        Task finalizedDependency = task("finalizedDependency", failure: new RuntimeException("failure"))
-        Task finalized = task("finalized", dependsOn: [finalizedDependency], finalizedBy: [finalizer])
-        executionPlan.useFailureHandler(createIgnoreTaskFailureHandler(finalizedDependency))
-
-        when:
-        addToGraphAndPopulate([finalizer, finalized])
-
-        then:
-        executionPlan.tasks == [finalizedDependency, finalized, finalizerDependency, finalizer]
-        executedTasks == [finalizedDependency, finalizerDependency, finalizer]
-    }
-
     def "stops returning tasks on task execution failure"() {
         RuntimeException exception = new RuntimeException("failure")
 
@@ -278,6 +263,17 @@ class DefaultTaskExecutionPlanTest extends AbstractTaskExecutionPlanTest {
             })
         }
         return tasks
+    }
+
+    @Override
+    void ignoreTaskFailure(TaskInternal finalizedDependency) {
+        executionPlan.useFailureHandler(createIgnoreTaskFailureHandler(finalizedDependency))
+    }
+
+    TaskFailureHandler createIgnoreTaskFailureHandler(Task task) {
+        Mock(TaskFailureHandler) {
+            onTaskFailure(task) >> {}
+        }
     }
 }
 

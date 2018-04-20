@@ -222,7 +222,7 @@ public class WorkGraph {
         this.filter = filter;
     }
 
-    public Iterable<TaskInfo> getEntryTasks() {
+    public Collection<TaskInfo> getEntryTasks() {
         return entryTasks;
     }
 
