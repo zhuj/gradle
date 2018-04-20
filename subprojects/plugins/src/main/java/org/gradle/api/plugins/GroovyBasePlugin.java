@@ -74,7 +74,7 @@ public class GroovyBasePlugin implements Plugin<Project> {
     }
 
     private void configureCompileDefaults() {
-        project.getTasks().withType(GroovyCompile.class, new Action<GroovyCompile>() {
+        project.getTasks().configureEachLater(GroovyCompile.class, new Action<GroovyCompile>() {
             public void execute(final GroovyCompile compile) {
                 compile.getConventionMapping().map("groovyClasspath", new Callable<Object>() {
                     public Object call() throws Exception {
@@ -118,7 +118,7 @@ public class GroovyBasePlugin implements Plugin<Project> {
     }
 
     private void configureGroovydoc() {
-        project.getTasks().withType(Groovydoc.class, new Action<Groovydoc>() {
+        project.getTasks().configureEachLater(Groovydoc.class, new Action<Groovydoc>() {
             public void execute(final Groovydoc groovydoc) {
                 groovydoc.getConventionMapping().map("groovyClasspath", new Callable<Object>() {
                     public Object call() throws Exception {

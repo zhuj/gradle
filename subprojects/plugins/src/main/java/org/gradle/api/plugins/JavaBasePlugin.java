@@ -361,7 +361,7 @@ public class JavaBasePlugin implements Plugin<ProjectInternal> {
     }
 
     private void configureJavaDoc(final Project project, final JavaPluginConvention convention) {
-        project.getTasks().withType(Javadoc.class, new Action<Javadoc>() {
+        project.getTasks().configureEachLater(Javadoc.class, new Action<Javadoc>() {
             public void execute(Javadoc javadoc) {
                 javadoc.getConventionMapping().map("destinationDir", new Callable<Object>() {
                     public Object call() throws Exception {
