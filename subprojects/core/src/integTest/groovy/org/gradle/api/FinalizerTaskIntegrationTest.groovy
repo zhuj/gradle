@@ -20,7 +20,8 @@ import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import spock.lang.Ignore
 import spock.lang.Unroll
 
-import static org.gradle.integtests.fixtures.executer.TaskOrderSpecs.*
+import static org.gradle.integtests.fixtures.executer.TaskOrderSpecs.any
+import static org.gradle.integtests.fixtures.executer.TaskOrderSpecs.exact
 
 class FinalizerTaskIntegrationTest extends AbstractIntegrationSpec {
     void 'finalizer tasks are scheduled as expected'() {
@@ -107,14 +108,6 @@ class FinalizerTaskIntegrationTest extends AbstractIntegrationSpec {
 
         where:
         taskDisablingStatement << ['a.enabled = false', 'a.onlyIf {false}']
-    }
-
-    @Ignore
-    void 'requesting to run finalizer task before finalized results in a circular dependency failure'() {
-        setupProject()
-
-        expect:
-        fails 'b', 'a'
     }
 
     void 'finalizer tasks are executed as expected in parallel builds'() {
