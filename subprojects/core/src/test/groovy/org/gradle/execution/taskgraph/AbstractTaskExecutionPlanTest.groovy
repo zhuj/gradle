@@ -271,6 +271,21 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
         executes(finalized1, finalizerDependency, finalizer1, finalized2, finalizer2)
     }
 
+    def "dependencies of finalizers of dependencies of finalizers are executed even in case of a task failure"() {
+        Task finalizer1Dependency = task("finalizer1Dependency")
+        Task finalizer1 = task("finalizer1", dependsOn: [finalizer1Dependency])
+        Task finalizer2Dependency = task("finalizer2Dependency", finalizedBy: [finalizer1])
+        Task finalizer2 = task("finalizer2", dependsOn: [finalizer2Dependency])
+        Task finalized = task("finalized", finalizedBy: [finalizer2], failure: new RuntimeException("failure"))
+        Task mustRunAfter = task("mustRunAfter", mustRunAfter: [finalizer2Dependency])
+
+        when:
+        addToGraphAndPopulate([finalized, mustRunAfter])
+
+        then:
+        executes(finalized, finalizer2Dependency, finalizer1Dependency, finalizer1, finalizer2)
+    }
+
     def "finalizer task is not added to the graph if it is filtered"() {
         given:
         Task finalizer = filteredTask("finalizer")

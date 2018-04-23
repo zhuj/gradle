@@ -27,7 +27,6 @@ import com.google.common.collect.Iterators;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Ordering;
-import com.sun.org.apache.xalan.internal.lib.NodeInfo;
 import org.gradle.api.Action;
 import org.gradle.api.CircularReferenceException;
 import org.gradle.api.NonNullApi;
@@ -136,6 +135,7 @@ public class NewWorkExecutionPlan {
             @Override
             public void getNodeValues(TaskInfo node, Collection<? super TaskInfo> values, Collection<? super TaskInfo> connectedNodes) {
                 connectedNodes.addAll(node.getDependencySuccessors());
+                connectedNodes.addAll(node.getFinalizers());
                 values.add(node);
             }
         });
@@ -149,10 +149,6 @@ public class NewWorkExecutionPlan {
                 }
             }
         }
-    }
-
-    private List<NodeInfo> getDependencies(TaskInfo finalizer) {
-        return null;
     }
 
     private Iterable<TaskInfo> discoverAllTasksToExecute(final Collection<TaskInfo> entryTasks) {
@@ -423,6 +419,11 @@ public class NewWorkExecutionPlan {
             onRemovedEdge.execute(graphEdge);
         }
         outgoingEdges.removeAll(node);
+        for (GraphEdge graphEdge : incomingEdges.get(node)) {
+            TaskInfo dependency = graphEdge.from;
+            outgoingEdges.remove(dependency, graphEdge);
+        }
+        incomingEdges.removeAll(node);
         nodesLeft.remove(node);
         readyToExecute.remove(node);
     }
