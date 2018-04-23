@@ -20,11 +20,11 @@ import org.gradle.api.internal.TaskInternal
 
 class NewWorkExecutionPlanTest extends AbstractTaskExecutionPlanTest {
 
-    def executionPlan = new NewWorkExecutionPlan(workGraph)
+    def executionPlan
 
     @Override
     void determineExecutionPlan() {
-        executionPlan.determineExecutionPlan()
+        executionPlan = NewWorkExecutionPlan.determineExecutionPlan(workGraph.getEntryTasks())
     }
 
     @Override

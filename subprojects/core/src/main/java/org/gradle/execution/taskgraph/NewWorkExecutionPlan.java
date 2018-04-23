@@ -16,7 +16,6 @@
 
 package org.gradle.execution.taskgraph;
 
-import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
@@ -25,6 +24,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.LinkedHashMultimap;
+import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Ordering;
 import org.gradle.api.Action;
@@ -46,6 +46,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -55,31 +56,52 @@ import java.util.Set;
 @NonNullApi
 public class NewWorkExecutionPlan {
 
-    private final Multimap<TaskInfo, GraphEdge> outgoingEdges = LinkedHashMultimap.create();
-    private final Multimap<TaskInfo, GraphEdge> incomingEdges = LinkedHashMultimap.create();
-    private final ArrayList<TaskInfo> readyToExecute = new ArrayList<TaskInfo>();
-    private final Map<TaskInfo, Integer> nodeIndex = new HashMap<TaskInfo, Integer>();
-    private final Ordering<TaskInfo> nodeOrderingByIndex = Ordering.<Integer>natural().onResultOf(Functions.forMap(nodeIndex));
-    private final WorkGraph workGraph;
-    private final List<TaskInfo> finalizers = new ArrayList<TaskInfo>();
-    private final Multimap<TaskInfo, TaskInfo> tasksForFinalizer = HashMultimap.create();
-    private final List<TaskInfo> allTasksToExecute = new ArrayList<TaskInfo>();
-    private final List<TaskInfo> nodesLeft = new ArrayList<TaskInfo>();
-    private final Multimap<TaskInfo, TaskInfo> mustRunSuccessors = HashMultimap.create();
+    private final Collection<TaskInfo> nodesLeft;
+    private final Multimap<TaskInfo, TaskInfo> haveToRunSuccessors;
+    private final Ordering<TaskInfo> nodeOrdering;
     private final Set<TaskInfo> requiredNodes = new HashSet<TaskInfo>();
     private boolean ignoreFailures = false;
+    private final Multimap<TaskInfo, GraphEdge> outgoingEdges;
+    private final Multimap<TaskInfo, GraphEdge> incomingEdges;
+    private final List<TaskInfo> readyToExecute;
 
-    public NewWorkExecutionPlan(WorkGraph workGraph) {
-        this.workGraph = workGraph;
+    public static NewWorkExecutionPlan determineExecutionPlan(final Collection<TaskInfo> entryTasks) {
+        final Multimap<TaskInfo, TaskInfo> finalizerEdges = LinkedListMultimap.create();
+        Collection<TaskInfo> allTasksToExecute = discoverAllTasksToExecute(entryTasks, finalizerEdges);
+        Iterable<TaskInfo> requestedTasks = FluentIterable.from(allTasksToExecute).filter(new Predicate<TaskInfo>() {
+            @Override
+            public boolean apply(TaskInfo node) {
+                return finalizerEdges.containsKey(node) || entryTasks.contains(node);
+            }
+        });
+        addShouldRunAfterEdgesForFinalizers(finalizerEdges);
+        Multimap<TaskInfo, TaskInfo> haveToRunSuccessors = HashMultimap.create();
+        determineHaveToRunSuccessors(finalizerEdges, haveToRunSuccessors);
+        breakCycles(entryTasks);
+
+        Multimap<TaskInfo, GraphEdge> outgoingEdges = LinkedHashMultimap.create();
+        Multimap<TaskInfo, GraphEdge> incomingEdges = LinkedHashMultimap.create();
+        List<TaskInfo> readyToExecute = new ArrayList<TaskInfo>();
+        Map<TaskInfo, Integer> nodeIndex = new HashMap<TaskInfo, Integer>();
+        determineWorkExecutionGraph(requestedTasks, outgoingEdges, incomingEdges, readyToExecute, nodeIndex);
+        Ordering<TaskInfo> nodeOrderingByIndex = Ordering.<Integer>natural().onResultOf(Functions.forMap(nodeIndex));
+        return new NewWorkExecutionPlan(outgoingEdges, incomingEdges, readyToExecute, haveToRunSuccessors, nodeOrderingByIndex, allTasksToExecute);
     }
 
-    public void determineExecutionPlan() {
-        Iterable<TaskInfo> entryTasks = discoverAllTasksToExecute(workGraph.getEntryTasks());
-        addShouldRunAfterEdgesForFinalizers();
-        breakCycles();
+    public NewWorkExecutionPlan(Multimap<TaskInfo, GraphEdge> outgoingEdges, Multimap<TaskInfo, GraphEdge> incomingEdges, List<TaskInfo> readyToExecute, Multimap<TaskInfo, TaskInfo> haveToRunSuccessors, Ordering<TaskInfo> nodeOrdering, Collection<TaskInfo> nodesLeft) {
+        this.outgoingEdges = outgoingEdges;
+        this.incomingEdges = incomingEdges;
+        this.readyToExecute = readyToExecute;
+        this.haveToRunSuccessors = haveToRunSuccessors;
+        this.nodeOrdering = nodeOrdering;
+        this.nodesLeft = nodesLeft;
+        Collections.sort(readyToExecute, nodeOrdering);
+    }
+
+    private static void determineWorkExecutionGraph(Iterable<TaskInfo> requestedTasks, Multimap<TaskInfo, GraphEdge> outgoingEdges, Multimap<TaskInfo, GraphEdge> incomingEdges, List<TaskInfo> readyToExecute, Map<TaskInfo, Integer> nodeIndex) {
         int currentIndex = 0;
         Deque<TaskInfo> nodeQueue = new ArrayDeque<TaskInfo>();
-        Iterables.addAll(nodeQueue, entryTasks);
+        Iterables.addAll(nodeQueue, requestedTasks);
 
         HashSet<TaskInfo> visitingNodes = new HashSet<TaskInfo>();
         HashSet<TaskInfo> visitedNodes = new HashSet<TaskInfo>();
@@ -106,7 +128,7 @@ public class NewWorkExecutionPlan {
                 while (descendingIterator.hasNext()) {
                     TaskInfo dependency = descendingIterator.next();
                     if (visitingNodes.contains(dependency)) {
-                        onOrderingCycle();
+                        onOrderingCycle(requestedTasks);
                     }
                     if (!dependency.isIncludeInGraph()) {
                         boolean propagateFailure = node.getDependencySuccessors().contains(dependency);
@@ -122,15 +144,33 @@ public class NewWorkExecutionPlan {
                 visitingNodes.remove(node);
                 visitedNodes.add(node);
                 nodeIndex.put(node, currentIndex++);
-                if (isReadyToExecute(node)) {
+                if (isReadyToExecute(node, incomingEdges)) {
                     readyToExecute.add(node);
                 }
             }
         }
-        Collections.sort(readyToExecute, nodeOrderingByIndex);
     }
 
-    private void addShouldRunAfterEdgesForFinalizers() {
+    private static void addShouldRunAfterEdgesForFinalizers(Multimap<TaskInfo, TaskInfo> finalizerEdges) {
+        CachingDirectedGraphWalker<TaskInfo, TaskInfo> graphWalker = new CachingDirectedGraphWalker<TaskInfo, TaskInfo>(new DirectedGraph<TaskInfo, TaskInfo>() {
+            @Override
+            public void getNodeValues(TaskInfo node, Collection<? super TaskInfo> values, Collection<? super TaskInfo> connectedNodes) {
+                connectedNodes.addAll(node.getDependencySuccessors());
+                values.add(node);
+            }
+        });
+        for (TaskInfo finalizer : finalizerEdges.keySet()) {
+            graphWalker.add(finalizer);
+            Set<TaskInfo> dependencies = graphWalker.findValues();
+            for (TaskInfo finalized : finalizerEdges.get(finalizer)) {
+                for (TaskInfo dependency : dependencies) {
+                    dependency.addShouldSuccessor(finalized);
+                }
+            }
+        }
+    }
+
+    private static void determineHaveToRunSuccessors(Multimap<TaskInfo, TaskInfo> finalizerEdges, Multimap<TaskInfo, TaskInfo> haveToRunSuccessors) {
         CachingDirectedGraphWalker<TaskInfo, TaskInfo> graphWalker = new CachingDirectedGraphWalker<TaskInfo, TaskInfo>(new DirectedGraph<TaskInfo, TaskInfo>() {
             @Override
             public void getNodeValues(TaskInfo node, Collection<? super TaskInfo> values, Collection<? super TaskInfo> connectedNodes) {
@@ -139,21 +179,21 @@ public class NewWorkExecutionPlan {
                 values.add(node);
             }
         });
-        for (TaskInfo finalizer : finalizers) {
+        for (TaskInfo finalizer : finalizerEdges.keySet()) {
             graphWalker.add(finalizer);
             Set<TaskInfo> dependencies = graphWalker.findValues();
-            for (TaskInfo finalized : tasksForFinalizer.get(finalizer)) {
+            for (TaskInfo finalized : finalizerEdges.get(finalizer)) {
                 for (TaskInfo dependency : dependencies) {
-                    dependency.addShouldSuccessor(finalized);
-                    mustRunSuccessors.put(finalized, dependency);
+                    haveToRunSuccessors.put(finalized, dependency);
                 }
             }
         }
     }
 
-    private Iterable<TaskInfo> discoverAllTasksToExecute(final Collection<TaskInfo> entryTasks) {
+    private static Collection<TaskInfo> discoverAllTasksToExecute(Collection<TaskInfo> entryTasks, Multimap<TaskInfo, TaskInfo> finalizerEdges) {
         Set<TaskInfo> visitingNodes = new HashSet<TaskInfo>();
         Deque<TaskInfo> nodeQueue = new ArrayDeque<TaskInfo>();
+        Set<TaskInfo> allTasksToExecute = new LinkedHashSet<TaskInfo>();
         Iterables.addAll(nodeQueue, entryTasks);
 
         while (!nodeQueue.isEmpty()) {
@@ -183,36 +223,24 @@ public class NewWorkExecutionPlan {
                 allTasksToExecute.add(node);
                 for (Iterator<TaskInfo> it = node.getFinalizers().descendingIterator(); it.hasNext(); ) {
                     TaskInfo finalizer = it.next();
-                    tasksForFinalizer.put(finalizer, node);
+                    finalizerEdges.put(finalizer, node);
                     if (visitingNodes.contains(finalizer) || allTasksToExecute.contains(finalizer)) {
                         continue;
                     }
                     nodeQueue.addFirst(finalizer);
-                    finalizers.add(finalizer);
                 }
             }
         }
-        nodesLeft.addAll(allTasksToExecute);
-        return FluentIterable.from(allTasksToExecute).filter(new Predicate<TaskInfo>() {
-            @Override
-            public boolean apply(TaskInfo node) {
-                return finalizers.contains(node) || entryTasks.contains(node);
-            }
-        });
+        return allTasksToExecute;
     }
 
     public List<Task> getTasks() {
-        return FluentIterable.from(allTasksToExecute).transform(new Function<TaskInfo, Task>() {
-            @Override
-            public Task apply(TaskInfo input) {
-                return input.getTask();
-            }
-        }).toList();
+        throw new UnsupportedOperationException();
     }
 
-    private void breakCycles() {
+    private static void breakCycles(Iterable<TaskInfo> entryTasks) {
         Deque<TaskInfo> nodeQueue = new ArrayDeque<TaskInfo>();
-        Iterables.addAll(nodeQueue, workGraph.getEntryTasks());
+        Iterables.addAll(nodeQueue, entryTasks);
 
         Set<TaskInfo> visitingNodes = new HashSet<TaskInfo>();
         Deque<TaskInfo> path = new ArrayDeque<TaskInfo>();
@@ -255,7 +283,7 @@ public class NewWorkExecutionPlan {
                             restoreSelectedNodes(planBeforeVisiting, selectedNodes, toBeRemoved);
                             break;
                         } else {
-                            onOrderingCycle();
+                            onOrderingCycle(entryTasks);
                         }
                     }
                     if (!dependency.isIncludeInGraph()) {
@@ -274,23 +302,23 @@ public class NewWorkExecutionPlan {
         }
     }
 
-    private boolean isReadyToExecute(TaskInfo node) {
+    private static boolean isReadyToExecute(TaskInfo node, Multimap<TaskInfo, GraphEdge> incomingEdges) {
         return !incomingEdges.containsKey(node);
     }
 
-    private void maybeRemoveProcessedShouldRunAfterEdge(Deque<GraphEdge> walkedShouldRunAfterEdges, TaskInfo taskNode) {
+    private static void maybeRemoveProcessedShouldRunAfterEdge(Deque<GraphEdge> walkedShouldRunAfterEdges, TaskInfo taskNode) {
         if (!walkedShouldRunAfterEdges.isEmpty() && walkedShouldRunAfterEdges.peek().from.equals(taskNode)) {
             walkedShouldRunAfterEdges.pop();
         }
     }
 
-    private void recordEdgeIfArrivedViaShouldRunAfter(Deque<GraphEdge> walkedShouldRunAfterEdges, Deque<TaskInfo> path, TaskInfo taskNode) {
+    private static void recordEdgeIfArrivedViaShouldRunAfter(Deque<GraphEdge> walkedShouldRunAfterEdges, Deque<TaskInfo> path, TaskInfo taskNode) {
         if (!path.isEmpty() && path.peek().getShouldSuccessors().contains(taskNode)) {
             walkedShouldRunAfterEdges.push(new GraphEdge(taskNode, path.peek(), true));
         }
     }
 
-    private void removeShouldRunAfterSuccessorsIfTheyImposeACycle(final Set<TaskInfo> visitingNodes, final TaskInfo taskNode) {
+    private static void removeShouldRunAfterSuccessorsIfTheyImposeACycle(final Set<TaskInfo> visitingNodes, final TaskInfo taskNode) {
         Iterables.removeIf(taskNode.getShouldSuccessors(), new Predicate<TaskInfo>() {
             public boolean apply(TaskInfo input) {
                 return visitingNodes.contains(input);
@@ -298,20 +326,20 @@ public class NewWorkExecutionPlan {
         });
     }
 
-    private void takePlanSnapshotIfCanBeRestoredToCurrentTask(HashMap<TaskInfo, Integer> planBeforeVisiting, List<TaskInfo> selectedNodes, TaskInfo taskNode) {
+    private static void takePlanSnapshotIfCanBeRestoredToCurrentTask(HashMap<TaskInfo, Integer> planBeforeVisiting, List<TaskInfo> selectedNodes, TaskInfo taskNode) {
         if (taskNode.getShouldSuccessors().size() > 0) {
             planBeforeVisiting.put(taskNode, selectedNodes.size());
         }
     }
 
-    private void restorePath(Deque<TaskInfo> path, GraphEdge toBeRemoved) {
+    private static void restorePath(Deque<TaskInfo> path, GraphEdge toBeRemoved) {
         TaskInfo removedFromPath = null;
         while (!toBeRemoved.to.equals(removedFromPath)) {
             removedFromPath = path.pop();
         }
     }
 
-    private void restoreQueue(Deque<TaskInfo> nodeQueue, Set<TaskInfo> visitingNodes, GraphEdge toBeRemoved) {
+    private static void restoreQueue(Deque<TaskInfo> nodeQueue, Set<TaskInfo> visitingNodes, GraphEdge toBeRemoved) {
         TaskInfo nextInQueue = null;
         while (!toBeRemoved.to.equals(nextInQueue)) {
             nextInQueue = nodeQueue.getFirst();
@@ -322,11 +350,11 @@ public class NewWorkExecutionPlan {
         }
     }
 
-    private void restoreSelectedNodes(HashMap<TaskInfo, Integer> planBeforeVisiting, List<TaskInfo> selectedNodes, GraphEdge toBeRemoved) {
+    private static void restoreSelectedNodes(HashMap<TaskInfo, Integer> planBeforeVisiting, List<TaskInfo> selectedNodes, GraphEdge toBeRemoved) {
         selectedNodes.subList(planBeforeVisiting.get(toBeRemoved.to), selectedNodes.size()).clear();
     }
 
-    private void onOrderingCycle() {
+    private static void onOrderingCycle(Iterable<TaskInfo> entryTasks) {
         CachingDirectedGraphWalker<TaskInfo, Void> graphWalker = new CachingDirectedGraphWalker<TaskInfo, Void>(new DirectedGraph<TaskInfo, Void>() {
             @Override
             public void getNodeValues(TaskInfo node, Collection<? super Void> values, Collection<? super TaskInfo> connectedNodes) {
@@ -334,7 +362,7 @@ public class NewWorkExecutionPlan {
                 connectedNodes.addAll(node.getMustSuccessors());
             }
         });
-        graphWalker.add(workGraph.getEntryTasks());
+        graphWalker.add(entryTasks);
         final List<TaskInfo> firstCycle = new ArrayList<TaskInfo>(graphWalker.findCycles().get(0));
         Collections.sort(firstCycle);
 
@@ -360,7 +388,7 @@ public class NewWorkExecutionPlan {
 
     public void finishedExecuting(TaskInfo node) {
         final boolean taskFailure = node.isFailed();
-        requiredNodes.addAll(mustRunSuccessors.get(node));
+        requiredNodes.addAll(haveToRunSuccessors.get(node));
         if (taskFailure && !ignoreFailures) {
             abort();
         }
@@ -373,7 +401,7 @@ public class NewWorkExecutionPlan {
                 }
             }
         });
-        Collections.sort(readyToExecute, nodeOrderingByIndex);
+        Collections.sort(readyToExecute, nodeOrdering);
     }
 
     private void nodeSkipped(TaskInfo initialNode) {
@@ -413,7 +441,7 @@ public class NewWorkExecutionPlan {
         for (GraphEdge graphEdge : outgoingEdges.get(node)) {
             TaskInfo dependentNode = graphEdge.to;
             incomingEdges.remove(dependentNode, graphEdge);
-            if (isReadyToExecute(dependentNode)) {
+            if (isReadyToExecute(dependentNode, incomingEdges)) {
                 readyToExecute.add(dependentNode);
             }
             onRemovedEdge.execute(graphEdge);
