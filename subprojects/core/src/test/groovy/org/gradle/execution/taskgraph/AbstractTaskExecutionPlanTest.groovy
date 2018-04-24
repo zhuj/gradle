@@ -117,7 +117,8 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
         determineExecutionPlan()
 
         then:
-        executes(a, b, c, d, e)
+        // executes(a, b, c, d, e)
+        executesBatches([a], [b], [c, d], [e])
     }
 
     def "all dependencies scheduled when adding tasks"() {
@@ -195,7 +196,7 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
         addToGraphAndPopulate([c, d])
 
         then:
-        executes(b, a, c, d)
+        executesBatches([a, b], [c], [d])
     }
 
     def "shouldRunAfter dependencies are scheduled before mustRunAfter dependencies"() {
@@ -208,7 +209,7 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
         addToGraphAndPopulate([c, d])
 
         then:
-        executes(b, a, c, d)
+        executesBatches([a, b], [c], [d])
     }
 
     def "cyclic should run after ordering is ignored in complex task graph"() {
@@ -247,14 +248,14 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
     }
 
     def "finalizer tasks are executed if a finalized task is added to the graph"() {
-        Task finalizer = task("a")
-        Task finalized = task("b", finalizedBy: [finalizer])
+        Task finalizer = task("finalizer")
+        Task a = task("a", finalizedBy: [finalizer])
 
         when:
-        addToGraphAndPopulate([finalized])
+        addToGraphAndPopulate([a])
 
         then:
-        executes(finalized, finalizer)
+        executes(a, finalizer)
     }
 
     def "finalizer tasks and their dependencies are executed even in case of a task failure"() {
@@ -268,7 +269,7 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
         addToGraphAndPopulate([finalized1, finalized2])
 
         then:
-        executes(finalized1, finalizerDependency, finalizer1, finalized2, finalizer2)
+        executesBatches([finalized1], [finalizerDependency, finalizer1, finalized2, finalizer2])
     }
 
     def "dependencies of finalizers of dependencies of finalizers are executed even in case of a task failure"() {
@@ -343,9 +344,7 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
         ignoreTaskFailure(finalizedDependency)
 
         then:
-        // FIXME wolfs
-//        executionPlan.tasks == [finalizedDependency, finalized, finalizerDependency, finalizer]
-        executedTasks == [finalizedDependency, finalizerDependency, finalizer]
+        executedTasks == [finalizedDependency, finalized, finalizerDependency, finalizer]
     }
 
     def "finalizer tasks are executed if the task did not do any work"() {
@@ -429,7 +428,7 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
 
         //tasks that depends on finalized, we will execute them
         Task df1 = task("df1", dependsOn: [finalized1])
-        Task df2 = task("df1", dependsOn: [finalized2])
+        Task df2 = task("df2", dependsOn: [finalized2])
 
         when:
         addToGraphAndPopulate([df1, df2])
@@ -454,6 +453,13 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
         orderingRule << ['mustRunAfter', 'shouldRunAfter']
     }
 
+    /**
+     * finalized <---dependsOn--- dependsOnFinalized
+     *           |                    ^
+     *           |                   ???
+     *           |                    |
+     *           \--finalizedBy-> finalizer
+     */
     @Unroll
     def "finalizer tasks run as soon as possible but after its #orderingRule tasks"() {
         Task finalizer = createTask("finalizer")
@@ -708,6 +714,16 @@ abstract class AbstractTaskExecutionPlanTest extends AbstractProjectBuilderSpec 
 
     void executes(Task... expectedTasks) {
         assert executedTasks == expectedTasks as List
+    }
+
+    void executesBatches(Collection<Task>... expectedBatches) {
+        def actualTasks = new LinkedList<Task>(executedTasks)
+        for (Collection<Task> batch : expectedBatches) {
+            Set<Task> expectedBatch = new HashSet<Task>(batch)
+            Set<Task> actualBatch = new HashSet<Task>(actualTasks.subList(0, batch.size()))
+            assert actualBatch == expectedBatch
+            batch.size().times { actualTasks.removeFirst() }
+        }
     }
 
     void addToGraphAndPopulate(List tasks) {
