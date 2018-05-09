@@ -136,7 +136,7 @@ class JUnitPlatformIntegrationTest extends JUnitPlatformIntegrationSpec {
         where:
         location    | beforeStatement                | afterStatement                 | successCount | failureCount
         'beforeAll' | 'throw new RuntimeException()' | ''                             | 0            | 1
-        'afterAll'  | ''                             | 'throw new RuntimeException()' | 1            | 1
+        'afterAll'  | ''                             | 'throw new RuntimeException()' | 0            | 1
     }
 
     def 'can handle class level assumption'() {
@@ -214,6 +214,42 @@ class JUnitPlatformIntegrationTest extends JUnitPlatformIntegrationSpec {
             .assertTestPassed('partialSkip(RepetitionInfo)[3]', 'partialSkip 3/3')
     }
 
+    def 'reports nested tests within enclosing class'() {
+        given:
+        file('src/test/java/org/gradle/NestedTest.java') << '''
+package org.gradle;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.EmptyStackException;
+import java.util.Stack;
+
+import org.junit.jupiter.api.*;
+
+class NestedTest {
+    @Test
+    void outerTest() {
+    }
+
+    @Nested
+    class Inner {
+        @Test
+        void innerTest() {
+        }
+    }
+}
+'''
+
+        when:
+        succeeds('test')
+
+        then:
+        new DefaultTestExecutionResult(testDirectory)
+            .assertTestClassesExecuted('org.gradle.NestedTest')
+            .testClass('org.gradle.NestedTest').assertTestCount(2, 0, 0)
+            .assertTestPassed('outerTest()')
+            .assertTestPassed('innerTest()')
+    }
+
     def 'can filter nested tests'() {
         given:
         file('src/test/java/org/gradle/NestedTest.java') << '''
@@ -250,8 +286,8 @@ test {
 
         then:
         new DefaultTestExecutionResult(testDirectory)
-            .assertTestClassesExecuted('org.gradle.NestedTest$Inner')
-            .testClass('org.gradle.NestedTest$Inner').assertTestCount(1, 0, 0)
+            .assertTestClassesExecuted('org.gradle.NestedTest')
+            .testClass('org.gradle.NestedTest').assertTestCount(1, 0, 0)
             .assertTestPassed('innerTest()')
     }
 
@@ -281,7 +317,7 @@ public class UninstantiatableExtension implements BeforeEachCallback {
 
         then:
         new DefaultTestExecutionResult(testDirectory)
-            .testClass('UnknownClass')
+            .testClass('JUnit Jupiter')
             .assertTestFailed('initializationError', containsString('UninstantiatableExtension'))
     }
 
