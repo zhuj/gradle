@@ -35,9 +35,9 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.EnumSet;
-import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Jdk7DirectoryWalker implements DirectoryWalker {
@@ -53,7 +53,7 @@ public class Jdk7DirectoryWalker implements DirectoryWalker {
 
     @Override
     public void walkDir(final File rootDir, final RelativePath rootPath, final FileVisitor visitor, final Spec<? super FileTreeElement> spec, final AtomicBoolean stopFlag, final boolean postfix) {
-        final Deque<FileVisitDetails> directoryDetailsHolder = new LinkedList<FileVisitDetails>();
+        final Deque<FileVisitDetails> directoryDetailsHolder = new ArrayDeque<FileVisitDetails>();
 
         try {
             Files.walkFileTree(rootDir.toPath(), EnumSet.of(FileVisitOption.FOLLOW_LINKS), Integer.MAX_VALUE, new java.nio.file.FileVisitor<Path>() {
