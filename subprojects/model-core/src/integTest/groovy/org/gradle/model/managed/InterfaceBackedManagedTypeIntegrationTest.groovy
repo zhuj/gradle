@@ -19,7 +19,10 @@ package org.gradle.model.managed
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.util.Requires
 import org.gradle.util.TestPrecondition
+import spock.lang.Issue
 
+@Issue("https://github.com/gradle/gradle/issues/721")
+@Requires(TestPrecondition.JDK8_OR_EARLIER)
 class InterfaceBackedManagedTypeIntegrationTest extends AbstractIntegrationSpec {
 
     def "rule method can define a managed model element backed by an interface"() {
