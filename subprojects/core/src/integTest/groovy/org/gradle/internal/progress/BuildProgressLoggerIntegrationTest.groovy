@@ -72,4 +72,26 @@ class BuildProgressLoggerIntegrationTest extends AbstractIntegrationSpec impleme
         testExecution.releaseAll()
         gradleHandle.waitForFinish()
     }
+
+    def "build script compilation progress is grouped under relevant project"() {
+        given:
+        file("subproj/build.gradle") << """def foo = '${server.callFromBuild(SERVER_RESOURCE).toString()}'"""
+        file("settings.gradle") << "include 'subproj'"
+        buildFile << "task hello {}"
+
+        def testExecution = server.expectAndBlock(SERVER_RESOURCE)
+
+        when:
+        def gradleHandle = executer.withTasks('hello').start()
+        testExecution.waitForAllPendingCalls()
+
+        then:
+        ConcurrentTestUtil.poll {
+            gradleHandle.standardOutput.matches(/(?s).*-> \d+% CONFIGURING \[.*$/)
+            gradleHandle.standardOutput.contains("> :subproj > Compiling ")
+        }
+
+        testExecution.releaseAll()
+        gradleHandle.waitForFinish()
+    }
 }
