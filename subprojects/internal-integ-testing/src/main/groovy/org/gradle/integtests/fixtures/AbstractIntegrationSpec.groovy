@@ -53,6 +53,9 @@ class AbstractIntegrationSpec extends Specification {
     @Rule
     final TestNameTestDirectoryProvider temporaryFolder = new TestNameTestDirectoryProvider()
 
+    @Rule
+    final NetworkFluctuationRetryRule networkFluctuationRetryRule = new NetworkFluctuationRetryRule()
+
     GradleDistribution distribution = new UnderDevelopmentGradleDistribution(getBuildContext())
     GradleExecuter executer = createExecuter()
 
