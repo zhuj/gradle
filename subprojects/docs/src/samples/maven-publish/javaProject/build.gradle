@@ -1,6 +1,21 @@
 apply plugin: 'java'
 apply plugin: 'maven-publish'
 
+buildscript {
+    repositories {
+        mavenLocal()
+    }
+    dependencies {
+        classpath 'com.gradle:build-scan-plugin:1.14-prerelease-master'
+    }
+}
+
+apply plugin: "com.gradle.build-scan"
+
+buildScan {
+    server = 'http://localhost:5050'
+}
+
 group = 'org.gradle.sample'
 version = '1.0'
 
