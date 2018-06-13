@@ -26,6 +26,8 @@ import org.gradle.api.publish.maven.internal.publisher.StaticLockingMavenPublish
 import org.gradle.api.publish.maven.internal.publisher.ValidatingMavenPublisher;
 import org.gradle.api.tasks.TaskAction;
 
+import static org.gradle.api.publish.internal.PublishBuildOperationType.PublicationType.MAVEN;
+
 /**
  * Publishes a {@link org.gradle.api.publish.maven.MavenPublication} to the Maven Local repository.
  *
@@ -40,9 +42,9 @@ public class PublishToMavenLocal extends AbstractPublishToMaven {
             throw new InvalidUserDataException("The 'publication' property is required");
         }
 
-        getBuildOperationExecutor().run(new PublishOperation((ProjectInternal) getProject(), publication, "mavenLocal") {
+        getBuildOperationExecutor().run(new PublishOperation((ProjectInternal) getProject(), publication, MAVEN, "mavenLocal") {
             @Override
-            protected void publish() throws Exception {
+            protected void publish() {
                 MavenPublisher localPublisher = new MavenLocalPublisher(getLoggingManagerFactory(), getMavenRepositoryLocator());
                 MavenPublisher staticLockingPublisher = new StaticLockingMavenPublisher(localPublisher);
                 MavenPublisher validatingPublisher = new ValidatingMavenPublisher(staticLockingPublisher);

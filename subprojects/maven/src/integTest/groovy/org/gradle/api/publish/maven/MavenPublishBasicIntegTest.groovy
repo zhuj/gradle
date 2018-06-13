@@ -197,6 +197,9 @@ class MavenPublishBasicIntegTest extends AbstractMavenPublishIntegTest {
         def records = operations.all(PublishBuildOperationType.class)
         records.size() == 1
         with(records[0]) {
+            details['projectPath'] == ':'
+            details['buildPath'] == ':'
+            details['type'] == 'MAVEN'
             details['name'] == 'myPub'
             details['repository'] == 'my-repo'
             result['group'] == 'myGroup'

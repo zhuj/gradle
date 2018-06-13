@@ -35,6 +35,8 @@ import org.gradle.internal.operations.BuildOperationExecutor;
 import javax.inject.Inject;
 import java.util.concurrent.Callable;
 
+import static org.gradle.api.publish.internal.PublishBuildOperationType.PublicationType.IVY;
+
 /**
  * Publishes an IvyPublication to an IvyArtifactRepository.
  *
@@ -146,9 +148,9 @@ public class PublishToIvyRepository extends DefaultTask {
     }
 
     private void doPublish(final IvyPublicationInternal publication, final IvyArtifactRepository repository) {
-        getBuildOperationExecutor().run(new PublishOperation((ProjectInternal) getProject(), publication, repository.getName()) {
+        getBuildOperationExecutor().run(new PublishOperation((ProjectInternal) getProject(), publication, IVY, repository.getName()) {
             @Override
-            protected void publish() throws Exception {
+            protected void publish() {
                 IvyNormalizedPublication normalizedPublication = publication.asNormalisedPublication();
                 IvyPublisher publisher = getIvyPublisher();
                 publisher.publish(normalizedPublication, Cast.cast(PublicationAwareRepository.class, repository));

@@ -31,6 +31,8 @@ import org.gradle.api.tasks.TaskAction;
 
 import javax.inject.Inject;
 
+import static org.gradle.api.publish.internal.PublishBuildOperationType.PublicationType.MAVEN;
+
 /**
  * Publishes a {@link org.gradle.api.publish.maven.MavenPublication} to a {@link MavenArtifactRepository}.
  *
@@ -75,9 +77,9 @@ public class PublishToMavenRepository extends AbstractPublishToMaven {
     }
 
     private void doPublish(final MavenPublicationInternal publication, final MavenArtifactRepository repository) {
-        getBuildOperationExecutor().run(new PublishOperation((ProjectInternal) getProject(), publication, repository.getName()) {
+        getBuildOperationExecutor().run(new PublishOperation((ProjectInternal) getProject(), publication, MAVEN, repository.getName()) {
             @Override
-            protected void publish() throws Exception {
+            protected void publish() {
                 MavenPublisher remotePublisher = new MavenRemotePublisher(getLoggingManagerFactory(), getMavenRepositoryLocator(), getTemporaryDirFactory(), getRepositoryTransportFactory());
                 MavenPublisher staticLockingPublisher = new StaticLockingMavenPublisher(remotePublisher);
                 MavenPublisher validatingPublisher = new ValidatingMavenPublisher(staticLockingPublisher);

@@ -20,6 +20,7 @@ import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.PublishException;
 import org.gradle.api.internal.GradleInternal;
 import org.gradle.api.internal.project.ProjectInternal;
+import org.gradle.api.publish.internal.PublishBuildOperationType.PublicationType;
 import org.gradle.internal.operations.BuildOperationContext;
 import org.gradle.internal.operations.BuildOperationDescriptor;
 import org.gradle.internal.operations.RunnableBuildOperation;
@@ -28,17 +29,19 @@ public abstract class PublishOperation implements RunnableBuildOperation {
 
     private final ProjectInternal project;
     private final PublicationInternal<?> publication;
+    private final PublicationType type;
     private final String repository;
 
-    protected PublishOperation(ProjectInternal project, PublicationInternal<?> publication, String repository) {
+    protected PublishOperation(ProjectInternal project, PublicationInternal<?> publication, PublicationType type, String repository) {
         this.project = project;
         this.publication = publication;
+        this.type = type;
         this.repository = repository;
     }
 
     @Override
     public BuildOperationDescriptor.Builder description() {
-        GradleInternal gradle = (GradleInternal) project.getGradle();
+        GradleInternal gradle = project.getGradle();
         return BuildOperationDescriptor.displayName(gradle.contextualize("Publishing"))
             .details(new PublishBuildOperationType.Details() {
                 @Override
@@ -54,6 +57,11 @@ public abstract class PublishOperation implements RunnableBuildOperation {
                 @Override
                 public String getName() {
                     return publication.getName();
+                }
+
+                @Override
+                public PublicationType getType() {
+                    return type;
                 }
 
                 @Override

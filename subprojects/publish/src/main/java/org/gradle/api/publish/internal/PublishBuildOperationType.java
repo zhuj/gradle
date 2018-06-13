@@ -26,6 +26,7 @@ public final class PublishBuildOperationType implements BuildOperationType<Publi
         String getProjectPath();
         String getBuildPath();
         String getName();
+        PublicationType getType();
         String getRepository();
     }
 
@@ -33,6 +34,10 @@ public final class PublishBuildOperationType implements BuildOperationType<Publi
         String getGroup();
         String getName();
         String getVersion();
+    }
+
+    public enum PublicationType {
+        MAVEN, IVY
     }
 
 }
