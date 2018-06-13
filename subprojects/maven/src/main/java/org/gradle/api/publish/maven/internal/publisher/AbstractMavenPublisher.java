@@ -18,6 +18,7 @@ package org.gradle.api.publish.maven.internal.publisher;
 
 import com.google.common.base.Strings;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
+import org.gradle.api.internal.artifacts.ModuleVersionPublishResult;
 import org.gradle.api.internal.artifacts.mvnsettings.LocalMavenRepositoryLocator;
 import org.gradle.api.logging.LogLevel;
 import org.gradle.api.publication.maven.internal.action.MavenPublishAction;
@@ -26,6 +27,9 @@ import org.gradle.internal.Factory;
 import org.gradle.internal.logging.LoggingManagerInternal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.net.URI;
 
 public abstract class AbstractMavenPublisher implements MavenPublisher {
     private final Factory<LoggingManagerInternal> loggingManagerFactory;
@@ -38,7 +42,7 @@ public abstract class AbstractMavenPublisher implements MavenPublisher {
         this.mavenRepositoryLocator = mavenRepositoryLocator;
     }
 
-    public void publish(MavenNormalizedPublication publication, MavenArtifactRepository artifactRepository) {
+    public ModuleVersionPublishResult publish(MavenNormalizedPublication publication, final MavenArtifactRepository artifactRepository) {
         if (artifactRepository == null) {
             LOGGER.info("Publishing to maven local repository");
         } else {
@@ -48,6 +52,12 @@ public abstract class AbstractMavenPublisher implements MavenPublisher {
         MavenPublishAction deployTask = createDeployTask(publication.getPackaging(), publication.getProjectIdentity(), mavenRepositoryLocator, artifactRepository);
         addPomAndArtifacts(deployTask, publication);
         execute(deployTask);
+        return new ModuleVersionPublishResult() {
+            @Override
+            public URI getPublishedLocation(File artifactFile) {
+                return artifactFile.toURI();
+            }
+        };
     }
 
     abstract protected MavenPublishAction createDeployTask(String packaging, MavenProjectIdentity projectIdentity, LocalMavenRepositoryLocator mavenRepositoryLocator, MavenArtifactRepository artifactRepository);

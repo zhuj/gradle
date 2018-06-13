@@ -21,6 +21,7 @@ import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.Transformer;
 import org.gradle.api.artifacts.repositories.IvyArtifactRepository;
 import org.gradle.api.file.FileCollection;
+import org.gradle.api.internal.artifacts.ModuleVersionPublishResult;
 import org.gradle.api.internal.artifacts.repositories.PublicationAwareRepository;
 import org.gradle.api.publish.internal.PublishOperation;
 import org.gradle.api.publish.ivy.IvyArtifact;
@@ -35,6 +36,7 @@ import org.gradle.internal.operations.BuildOperationExecutor;
 import org.gradle.util.CollectionUtils;
 
 import javax.inject.Inject;
+import java.io.File;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -154,16 +156,17 @@ public class PublishToIvyRepository extends DefaultTask {
         final IvyNormalizedPublication normalizedPublication = publication.asNormalisedPublication();
         getBuildOperationExecutor().run(new PublishOperation(getProject(), publication, IVY, repository.getName()) {
             @Override
-            protected void publish() {
-                getIvyPublisher().publish(normalizedPublication, Cast.cast(PublicationAwareRepository.class, repository));
+            protected ModuleVersionPublishResult publish() throws Exception {
+                IvyPublisher publisher = getIvyPublisher();
+                return publisher.publish(normalizedPublication, Cast.cast(PublicationAwareRepository.class, repository));
             }
 
             @Override
-            protected List<String> getArtifacts() {
-                return CollectionUtils.collect((Iterable<IvyArtifact>) normalizedPublication.getAllArtifacts(), new Transformer<String, IvyArtifact>() {
+            protected List<File> getArtifacts() {
+                return CollectionUtils.collect((Iterable<IvyArtifact>) normalizedPublication.getAllArtifacts(), new Transformer<File, IvyArtifact>() {
                     @Override
-                    public String transform(IvyArtifact mavenArtifact) {
-                        return publication.getArtifactFileName(mavenArtifact.getClassifier(), mavenArtifact.getExtension());
+                    public File transform(IvyArtifact mavenArtifact) {
+                        return mavenArtifact.getFile();
                     }
                 });
             }

@@ -20,6 +20,7 @@ import org.apache.commons.lang.ObjectUtils;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.internal.artifacts.ImmutableModuleIdentifierFactory;
+import org.gradle.api.internal.artifacts.ModuleVersionPublishResult;
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.parser.DescriptorParseContext;
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.parser.DisconnectedDescriptorParseContext;
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.parser.DisconnectedIvyXmlModuleDescriptorParser;
@@ -47,11 +48,11 @@ public class ValidatingIvyPublisher implements IvyPublisher {
         moduleDescriptorParser = new DisconnectedIvyXmlModuleDescriptorParser(new IvyModuleDescriptorConverter(moduleIdentifierFactory), moduleIdentifierFactory, fileResourceRepository, metadataFactory);
     }
 
-    public void publish(IvyNormalizedPublication publication, PublicationAwareRepository repository) {
+    public ModuleVersionPublishResult publish(IvyNormalizedPublication publication, PublicationAwareRepository repository) {
         validateMetadata(publication);
         validateArtifacts(publication);
         checkNoDuplicateArtifacts(publication);
-        delegate.publish(publication, repository);
+        return delegate.publish(publication, repository);
     }
 
     private void validateMetadata(IvyNormalizedPublication publication) {

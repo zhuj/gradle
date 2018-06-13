@@ -16,6 +16,7 @@
 package org.gradle.api.publish.maven.internal.publisher;
 
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
+import org.gradle.api.internal.artifacts.ModuleVersionPublishResult;
 
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -32,10 +33,10 @@ public class StaticLockingMavenPublisher implements MavenPublisher {
         this.delegate = delegate;
     }
 
-    public void publish(MavenNormalizedPublication publication, MavenArtifactRepository artifactRepository) {
+    public ModuleVersionPublishResult publish(MavenNormalizedPublication publication, MavenArtifactRepository artifactRepository) {
         STATIC_LOCK.lock();
         try {
-            delegate.publish(publication, artifactRepository);
+            return delegate.publish(publication, artifactRepository);
         } finally {
             STATIC_LOCK.unlock();
         }

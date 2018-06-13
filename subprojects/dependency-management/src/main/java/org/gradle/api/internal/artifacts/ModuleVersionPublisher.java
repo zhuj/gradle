@@ -19,5 +19,5 @@ package org.gradle.api.internal.artifacts;
 import org.gradle.internal.component.external.ivypublish.IvyModulePublishMetadata;
 
 public interface ModuleVersionPublisher {
-    void publish(IvyModulePublishMetadata moduleVersion);
+    ModuleVersionPublishResult publish(IvyModulePublishMetadata moduleVersion);
 }

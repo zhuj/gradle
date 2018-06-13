@@ -18,6 +18,7 @@ package org.gradle.api.internal.artifacts.repositories.resolver;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
 import org.gradle.api.Transformer;
 import org.gradle.api.artifacts.ComponentMetadataListerDetails;
 import org.gradle.api.artifacts.ComponentMetadataSupplierDetails;
@@ -25,6 +26,7 @@ import org.gradle.api.artifacts.ModuleIdentifier;
 import org.gradle.api.artifacts.component.ComponentArtifactIdentifier;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.internal.artifacts.ImmutableModuleIdentifierFactory;
+import org.gradle.api.internal.artifacts.ModuleVersionPublishResult;
 import org.gradle.api.internal.artifacts.ModuleVersionPublisher;
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ComponentResolvers;
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ConfiguredModuleComponentRepository;
@@ -81,6 +83,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -285,13 +288,22 @@ public abstract class ExternalResourceResolver<T extends ModuleComponentResolveM
         return createArtifactResolver();
     }
 
-    public void publish(IvyModulePublishMetadata moduleVersion) {
+    public ModuleVersionPublishResult publish(IvyModulePublishMetadata moduleVersion) {
+        final Map<File, URI> published = Maps.newHashMap();
         for (IvyModuleArtifactPublishMetadata artifact : moduleVersion.getArtifacts()) {
-            publish(new DefaultModuleComponentArtifactMetadata(artifact.getId()), artifact.getFile());
+            File file = artifact.getFile();
+            URI location = publish(new DefaultModuleComponentArtifactMetadata(artifact.getId()), file);
+            published.put(file, location);
         }
+        return new ModuleVersionPublishResult() {
+            @Override
+            public URI getPublishedLocation(File artifactFile) {
+                return published.get(artifactFile);
+            }
+        };
     }
 
-    private void publish(ModuleComponentArtifactMetadata artifact, File src) {
+    private URI publish(ModuleComponentArtifactMetadata artifact, File src) {
         ResourcePattern destinationPattern;
         if ("ivy".equals(artifact.getName().getType()) && !ivyPatterns.isEmpty()) {
             destinationPattern = ivyPatterns.get(0);
@@ -304,6 +316,7 @@ public abstract class ExternalResourceResolver<T extends ModuleComponentResolveM
 
         put(src, destination);
         LOGGER.info("Published {} to {}", artifact, destination);
+        return destination.getUri();
     }
 
     private void put(File src, ExternalResourceName destination) {

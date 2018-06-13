@@ -19,6 +19,7 @@ package org.gradle.api.publish.maven.internal.publisher;
 import org.apache.commons.lang.ObjectUtils;
 import org.gradle.api.UncheckedIOException;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
+import org.gradle.api.internal.artifacts.ModuleVersionPublishResult;
 import org.gradle.api.publish.PublicationArtifact;
 import org.gradle.api.publish.internal.PublicationFieldValidator;
 import org.gradle.api.publish.maven.InvalidMavenPublicationException;
@@ -41,12 +42,12 @@ public class ValidatingMavenPublisher implements MavenPublisher {
         this.delegate = delegate;
     }
 
-    public void publish(MavenNormalizedPublication publication, MavenArtifactRepository artifactRepository) {
+    public ModuleVersionPublishResult publish(MavenNormalizedPublication publication, MavenArtifactRepository artifactRepository) {
         validateIdentity(publication);
         validateArtifacts(publication);
         checkNoDuplicateArtifacts(publication);
 
-        delegate.publish(publication, artifactRepository);
+        return delegate.publish(publication, artifactRepository);
     }
 
     private void validateIdentity(MavenNormalizedPublication publication) {

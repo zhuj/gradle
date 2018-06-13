@@ -25,6 +25,7 @@ import org.gradle.api.publish.maven.internal.publication.MavenPublicationInterna
 import org.gradle.api.publish.maven.internal.publisher.MavenNormalizedPublication;
 import org.gradle.util.CollectionUtils;
 
+import java.io.File;
 import java.util.List;
 
 abstract class MavenPublishOperation extends PublishOperation {
@@ -39,11 +40,11 @@ abstract class MavenPublishOperation extends PublishOperation {
     }
 
     @Override
-    protected List<String> getArtifacts() {
-        return CollectionUtils.collect((Iterable<MavenArtifact>) normalizedPublication.getAllArtifacts(), new Transformer<String, MavenArtifact>() {
+    protected List<File> getArtifacts() {
+        return CollectionUtils.collect((Iterable<MavenArtifact>) normalizedPublication.getAllArtifacts(), new Transformer<File, MavenArtifact>() {
             @Override
-            public String transform(MavenArtifact mavenArtifact) {
-                return publication.getArtifactFileName(mavenArtifact.getClassifier(), mavenArtifact.getExtension());
+            public File transform(MavenArtifact mavenArtifact) {
+                return mavenArtifact.getFile();
             }
         });
     }

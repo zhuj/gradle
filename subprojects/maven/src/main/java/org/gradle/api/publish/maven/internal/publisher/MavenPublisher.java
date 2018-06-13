@@ -16,6 +16,7 @@
 package org.gradle.api.publish.maven.internal.publisher;
 
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
+import org.gradle.api.internal.artifacts.ModuleVersionPublishResult;
 
 import javax.annotation.Nullable;
 
@@ -23,5 +24,5 @@ import javax.annotation.Nullable;
  * Used by `maven-publish` plugin to publish Maven modules.
  */
 public interface MavenPublisher {
-    void publish(MavenNormalizedPublication publication, @Nullable MavenArtifactRepository artifactRepository);
+    ModuleVersionPublishResult publish(MavenNormalizedPublication publication, @Nullable MavenArtifactRepository artifactRepository);
 }

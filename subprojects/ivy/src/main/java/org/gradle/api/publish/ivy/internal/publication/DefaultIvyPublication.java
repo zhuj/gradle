@@ -159,6 +159,11 @@ public class DefaultIvyPublication implements IvyPublicationInternal {
     }
 
     @Override
+    public File getIvyFile() {
+        return ivyDescriptorArtifact.getFile();
+    }
+
+    @Override
     public void setIvyDescriptorGenerator(Task descriptorGenerator) {
         if (ivyDescriptorArtifact != null) {
             metadataArtifacts.remove(ivyDescriptorArtifact);
@@ -404,7 +409,7 @@ public class DefaultIvyPublication implements IvyPublicationInternal {
         return featurePreviews.isFeatureEnabled(GRADLE_METADATA);
     }
 
-    private File getIvyDescriptorFile() {
+    public File getIvyDescriptorFile() {
         if (ivyDescriptorArtifact == null) {
             throw new IllegalStateException("ivyDescriptorArtifact not set for publication");
         }

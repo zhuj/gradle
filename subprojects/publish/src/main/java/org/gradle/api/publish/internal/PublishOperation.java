@@ -16,16 +16,19 @@
 
 package org.gradle.api.publish.internal;
 
+import com.google.common.collect.Lists;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.PublishException;
 import org.gradle.api.internal.GradleInternal;
+import org.gradle.api.internal.artifacts.ModuleVersionPublishResult;
 import org.gradle.api.internal.project.ProjectInternal;
 import org.gradle.api.publish.internal.PublishBuildOperationType.PublicationType;
 import org.gradle.internal.operations.BuildOperationContext;
 import org.gradle.internal.operations.BuildOperationDescriptor;
 import org.gradle.internal.operations.RunnableBuildOperation;
 
+import java.io.File;
 import java.util.List;
 
 public abstract class PublishOperation implements RunnableBuildOperation {
@@ -74,12 +77,12 @@ public abstract class PublishOperation implements RunnableBuildOperation {
             });
     }
 
-    protected abstract void publish() throws Exception;
+    protected abstract ModuleVersionPublishResult publish() throws Exception;
 
     @Override
     public void run(BuildOperationContext context) {
         try {
-            publish();
+            final ModuleVersionPublishResult result = publish();
             final ModuleVersionIdentifier coordinates = publication.getCoordinates();
             context.setResult(new PublishBuildOperationType.Result() {
                 @Override
@@ -99,7 +102,11 @@ public abstract class PublishOperation implements RunnableBuildOperation {
 
                 @Override
                 public List<String> getArtifacts() {
-                    return PublishOperation.this.getArtifacts();
+                    List<String> uploads = Lists.newArrayList();
+                    for (File publicationArtifact : PublishOperation.this.getArtifacts()) {
+                        uploads.add(result.getPublishedLocation(publicationArtifact).toString());
+                    }
+                    return uploads;
                 }
             });
         } catch (Exception e) {
@@ -107,5 +114,5 @@ public abstract class PublishOperation implements RunnableBuildOperation {
         }
     }
 
-    protected abstract List<String> getArtifacts();
+    protected abstract List<File> getArtifacts();
 }

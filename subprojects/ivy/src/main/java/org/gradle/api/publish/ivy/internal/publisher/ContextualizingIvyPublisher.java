@@ -17,7 +17,8 @@
 package org.gradle.api.publish.ivy.internal.publisher;
 
 import org.apache.ivy.Ivy;
-import org.gradle.api.Action;
+import org.gradle.api.Transformer;
+import org.gradle.api.internal.artifacts.ModuleVersionPublishResult;
 import org.gradle.api.internal.artifacts.ivyservice.IvyContextManager;
 import org.gradle.api.internal.artifacts.repositories.PublicationAwareRepository;
 
@@ -30,10 +31,11 @@ public class ContextualizingIvyPublisher implements IvyPublisher {
         this.ivyContextManager = ivyContextManager;
     }
 
-    public void publish(final IvyNormalizedPublication publication, final PublicationAwareRepository repository) {
-        ivyContextManager.withIvy(new Action<Ivy>() {
-            public void execute(Ivy ivy) {
-                ivyPublisher.publish(publication, repository);
+    public ModuleVersionPublishResult publish(final IvyNormalizedPublication publication, final PublicationAwareRepository repository) {
+        return ivyContextManager.withIvy(new Transformer<ModuleVersionPublishResult, Ivy>() {
+            @Override
+            public ModuleVersionPublishResult transform(Ivy ivy) {
+                return ivyPublisher.publish(publication, repository);
             }
         });
     }

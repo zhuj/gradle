@@ -17,6 +17,9 @@
 
 package org.gradle.api.publish.ivy
 
+import org.gradle.api.publish.internal.PublishBuildOperationType
+import org.gradle.integtests.fixtures.BuildOperationsFixture
+
 class IvyPublishBasicIntegTest extends AbstractIvyPublishIntegTest {
 
     def "publishes nothing without defined publication"() {
@@ -83,6 +86,55 @@ class IvyPublishBasicIntegTest extends AbstractIvyPublishIntegTest {
             withModuleMetadata {
                 noComponentPublished()
             }
+        }
+    }
+
+    def "emits build operations when publishing"() {
+        given:
+        def javaLibrary = javaLibrary(ivyRepo.module('myGroup', 'myArtifactId', '42.0'))
+        def operations = new BuildOperationsFixture(executer, testDirectoryProvider)
+
+        and:
+        settingsFile << "rootProject.name = 'root'"
+        buildFile << """
+            apply plugin: 'ivy-publish'
+            apply plugin: 'java'
+
+            group = 'group'
+            version = '1.0'
+
+            publishing {
+                repositories {
+                    ivy {
+                        name 'my-repo'
+                        url "${ivyRepo.uri}"
+                    }
+                }
+                publications {
+                    myPub(IvyPublication) {
+                        from components.java
+                        organisation = 'myGroup'
+                        module = 'myArtifactId'
+                        revision = '42.0'
+                    }
+                }
+            }
+        """
+
+        when:
+        succeeds("publish")
+
+        then:
+        def records = operations.all(PublishBuildOperationType.class)
+        records.size() == 1
+        with(records[0]) {
+            details['name'] == 'myPub'
+            details['repository'] == 'my-repo'
+            result['group'] == 'myGroup'
+            result['name'] == 'myArtifactId'
+            result['version'] == '42.0'
+            result['artifacts'].size() == 3
+            result['artifacts'] as Set == [javaLibrary.ivyFile.toURI().toString(), javaLibrary.jarFile.toURI().toString(), javaLibrary.moduleMetadataFile.toURI().toString()] as Set
         }
     }
 

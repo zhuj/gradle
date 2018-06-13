@@ -28,6 +28,7 @@ import org.gradle.api.artifacts.maven.MavenPom;
 import org.gradle.api.artifacts.maven.MavenResolver;
 import org.gradle.api.artifacts.maven.PomFilterContainer;
 import org.gradle.api.artifacts.maven.PublishFilter;
+import org.gradle.api.internal.artifacts.ModuleVersionPublishResult;
 import org.gradle.api.internal.artifacts.ModuleVersionPublisher;
 import org.gradle.api.internal.artifacts.ivyservice.IvyUtil;
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ConfiguredModuleComponentRepository;
@@ -50,6 +51,7 @@ import org.gradle.internal.logging.LoggingManagerInternal;
 import org.gradle.util.ConfigureUtil;
 
 import java.io.File;
+import java.net.URI;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -87,7 +89,7 @@ abstract class AbstractMavenResolver extends AbstractArtifactRepository implemen
 
     protected abstract MavenPublishAction createPublishAction(String packaging, MavenProjectIdentity projectIdentity, LocalMavenRepositoryLocator mavenRepositoryLocator);
 
-    public void publish(IvyModulePublishMetadata moduleVersion) {
+    public ModuleVersionPublishResult publish(IvyModulePublishMetadata moduleVersion) {
         for (IvyModuleArtifactPublishMetadata artifactMetadata : moduleVersion.getArtifacts()) {
             IvyArtifactName artifact = artifactMetadata.getArtifactName();
             ModuleRevisionId moduleRevisionId = IvyUtil.createModuleRevisionId(artifactMetadata.getId().getComponentIdentifier());
@@ -95,7 +97,7 @@ abstract class AbstractMavenResolver extends AbstractArtifactRepository implemen
             Artifact ivyArtifact = new DefaultArtifact(moduleRevisionId, null, artifact.getName(), artifact.getType(), artifact.getExtension(), attributes);
             collectArtifact(ivyArtifact, artifactMetadata.getFile());
         }
-        publish();
+        return publish();
     }
 
     private void collectArtifact(Artifact artifact, File src) {
@@ -109,7 +111,7 @@ abstract class AbstractMavenResolver extends AbstractArtifactRepository implemen
         return artifact.getType().equals("ivy");
     }
 
-    private void publish() {
+    private ModuleVersionPublishResult publish() {
         Set<MavenDeployment> mavenDeployments = getArtifactPomContainer().createDeployableFilesInfos();
         for (MavenDeployment mavenDeployment : mavenDeployments) {
             MavenProjectIdentity projectIdentity = new ReadableMavenProjectIdentity(mavenDeployment.getGroupId(), mavenDeployment.getArtifactId(), mavenDeployment.getVersion());
@@ -118,6 +120,12 @@ abstract class AbstractMavenResolver extends AbstractArtifactRepository implemen
             addArtifacts(publishAction, mavenDeployment);
             execute(publishAction);
         }
+        return new ModuleVersionPublishResult() {
+            @Override
+            public URI getPublishedLocation(File artifactFile) {
+                return artifactFile.toURI();
+            }
+        };
     }
 
     private void execute(MavenPublishAction publishAction) {

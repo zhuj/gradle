@@ -17,6 +17,7 @@
 package org.gradle.api.publish.maven.tasks;
 
 import org.gradle.api.InvalidUserDataException;
+import org.gradle.api.internal.artifacts.ModuleVersionPublishResult;
 import org.gradle.api.publish.maven.internal.publication.MavenPublicationInternal;
 import org.gradle.api.publish.maven.internal.publisher.MavenLocalPublisher;
 import org.gradle.api.publish.maven.internal.publisher.MavenPublisher;
@@ -40,11 +41,11 @@ public class PublishToMavenLocal extends AbstractPublishToMaven {
 
         getBuildOperationExecutor().run(new MavenPublishOperation(getProject(), publication, "mavenLocal") {
             @Override
-            protected void publish() {
+            protected ModuleVersionPublishResult publish() {
                 MavenPublisher localPublisher = new MavenLocalPublisher(getLoggingManagerFactory(), getMavenRepositoryLocator());
                 MavenPublisher staticLockingPublisher = new StaticLockingMavenPublisher(localPublisher);
                 MavenPublisher validatingPublisher = new ValidatingMavenPublisher(staticLockingPublisher);
-                validatingPublisher.publish(normalizedPublication, null);
+                return validatingPublisher.publish(normalizedPublication, null);
             }
         });
     }

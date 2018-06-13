@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 the original author or authors.
+ * Copyright 2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,11 @@
  * limitations under the License.
  */
 
-package org.gradle.api.publish.ivy.internal.publisher;
+package org.gradle.api.internal.artifacts;
 
-import org.gradle.api.internal.artifacts.ModuleVersionPublishResult;
-import org.gradle.api.internal.artifacts.repositories.PublicationAwareRepository;
+import java.io.File;
+import java.net.URI;
 
-/**
- * Used by the `ivy-publish` plugin to publish Ivy modules.
- */
-public interface IvyPublisher {
-    ModuleVersionPublishResult publish(IvyNormalizedPublication publication, PublicationAwareRepository repository);
+public interface ModuleVersionPublishResult {
+    URI getPublishedLocation(File artifactFile);
 }

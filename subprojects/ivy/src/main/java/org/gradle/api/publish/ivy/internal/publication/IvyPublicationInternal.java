@@ -26,6 +26,7 @@ import org.gradle.api.publish.ivy.internal.dependency.IvyExcludeRule;
 import org.gradle.api.publish.ivy.internal.publisher.IvyNormalizedPublication;
 import org.gradle.api.publish.ivy.internal.publisher.IvyPublicationIdentity;
 
+import java.io.File;
 import java.util.Set;
 
 public interface IvyPublicationInternal extends IvyPublication, PublicationInternal<IvyArtifact> {
@@ -49,4 +50,6 @@ public interface IvyPublicationInternal extends IvyPublication, PublicationInter
     Set<IvyExcludeRule> getGlobalExcludes();
 
     IvyNormalizedPublication asNormalisedPublication();
+
+    File getIvyFile();
 }
