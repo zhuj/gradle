@@ -205,6 +205,7 @@ class MavenPublishBasicIntegTest extends AbstractMavenPublishIntegTest {
             result['group'] == 'myGroup'
             result['name'] == 'myArtifactId'
             result['version'] == '42.0'
+            result['artifacts'] == ['myArtifactId-42.0.jar', 'myArtifactId-42.0.pom', 'myArtifactId-42.0.module']
         }
     }
 

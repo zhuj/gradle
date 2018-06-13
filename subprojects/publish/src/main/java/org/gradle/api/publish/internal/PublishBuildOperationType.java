@@ -19,6 +19,8 @@ package org.gradle.api.publish.internal;
 import org.gradle.internal.operations.BuildOperationType;
 import org.gradle.internal.scan.UsedByScanPlugin;
 
+import java.util.List;
+
 public final class PublishBuildOperationType implements BuildOperationType<PublishBuildOperationType.Details, PublishBuildOperationType.Result> {
 
     @UsedByScanPlugin
@@ -34,6 +36,7 @@ public final class PublishBuildOperationType implements BuildOperationType<Publi
         String getGroup();
         String getName();
         String getVersion();
+        List<String> getArtifacts();
     }
 
     public enum PublicationType {

@@ -17,16 +17,12 @@
 package org.gradle.api.publish.maven.tasks;
 
 import org.gradle.api.InvalidUserDataException;
-import org.gradle.api.internal.project.ProjectInternal;
-import org.gradle.api.publish.internal.PublishOperation;
 import org.gradle.api.publish.maven.internal.publication.MavenPublicationInternal;
 import org.gradle.api.publish.maven.internal.publisher.MavenLocalPublisher;
 import org.gradle.api.publish.maven.internal.publisher.MavenPublisher;
 import org.gradle.api.publish.maven.internal.publisher.StaticLockingMavenPublisher;
 import org.gradle.api.publish.maven.internal.publisher.ValidatingMavenPublisher;
 import org.gradle.api.tasks.TaskAction;
-
-import static org.gradle.api.publish.internal.PublishBuildOperationType.PublicationType.MAVEN;
 
 /**
  * Publishes a {@link org.gradle.api.publish.maven.MavenPublication} to the Maven Local repository.
@@ -37,19 +33,20 @@ public class PublishToMavenLocal extends AbstractPublishToMaven {
 
     @TaskAction
     public void publish() {
-        final MavenPublicationInternal publication = getPublicationInternal();
+        MavenPublicationInternal publication = getPublicationInternal();
         if (publication == null) {
             throw new InvalidUserDataException("The 'publication' property is required");
         }
 
-        getBuildOperationExecutor().run(new PublishOperation((ProjectInternal) getProject(), publication, MAVEN, "mavenLocal") {
+        getBuildOperationExecutor().run(new MavenPublishOperation(getProject(), publication, "mavenLocal") {
             @Override
             protected void publish() {
                 MavenPublisher localPublisher = new MavenLocalPublisher(getLoggingManagerFactory(), getMavenRepositoryLocator());
                 MavenPublisher staticLockingPublisher = new StaticLockingMavenPublisher(localPublisher);
                 MavenPublisher validatingPublisher = new ValidatingMavenPublisher(staticLockingPublisher);
-                validatingPublisher.publish(publication.asNormalisedPublication(), null);
+                validatingPublisher.publish(normalizedPublication, null);
             }
         });
     }
+
 }

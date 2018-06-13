@@ -16,6 +16,7 @@
 
 package org.gradle.api.publish.internal;
 
+import org.gradle.api.Project;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.PublishException;
 import org.gradle.api.internal.GradleInternal;
@@ -25,6 +26,8 @@ import org.gradle.internal.operations.BuildOperationContext;
 import org.gradle.internal.operations.BuildOperationDescriptor;
 import org.gradle.internal.operations.RunnableBuildOperation;
 
+import java.util.List;
+
 public abstract class PublishOperation implements RunnableBuildOperation {
 
     private final ProjectInternal project;
@@ -32,8 +35,8 @@ public abstract class PublishOperation implements RunnableBuildOperation {
     private final PublicationType type;
     private final String repository;
 
-    protected PublishOperation(ProjectInternal project, PublicationInternal<?> publication, PublicationType type, String repository) {
-        this.project = project;
+    protected PublishOperation(Project project, PublicationInternal<?> publication, PublicationType type, String repository) {
+        this.project = (ProjectInternal) project;
         this.publication = publication;
         this.type = type;
         this.repository = repository;
@@ -93,9 +96,16 @@ public abstract class PublishOperation implements RunnableBuildOperation {
                 public String getVersion() {
                     return coordinates.getVersion();
                 }
+
+                @Override
+                public List<String> getArtifacts() {
+                    return PublishOperation.this.getArtifacts();
+                }
             });
         } catch (Exception e) {
             throw new PublishException(String.format("Failed to publish publication '%s' to repository '%s'", publication.getName(), repository), e);
         }
     }
+
+    protected abstract List<String> getArtifacts();
 }

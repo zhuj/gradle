@@ -433,7 +433,8 @@ public class DefaultIvyPublication implements IvyPublicationInternal {
         return getArtifactFileName(source.getClassifier(), source.getExtension());
     }
 
-    private String getArtifactFileName(String classifier, String extension) {
+    @Override
+    public String getArtifactFileName(String classifier, String extension) {
         StringBuilder artifactPath = new StringBuilder();
         ModuleVersionIdentifier coordinates = getCoordinates();
         artifactPath.append(coordinates.getName());

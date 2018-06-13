@@ -46,6 +46,10 @@ class MavenPublishMultiProjectIntegTest extends AbstractMavenPublishIntegTest {
         records.collect { it.result['name'] } as Set == ['project1', 'project2', 'project3'] as Set
         records.collect { it.result['version'] } as Set == ['1.0', '2.0', '3.0'] as Set
         records.collect { it.details['projectPath'] } as Set == [':project1', ':project2', ':project3'] as Set
+        records.collect { it.result['artifacts'] } as Set == [
+            ['project1-1.0.jar', 'project1-1.0.pom', 'project1-1.0.module'],
+            ['project2-2.0.jar', 'project2-2.0.pom', 'project2-2.0.module'],
+            ['project3-3.0.jar', 'project3-3.0.pom', 'project3-3.0.module']] as Set
 
         and:
         projectsCorrectlyPublished()

@@ -18,11 +18,12 @@ package org.gradle.api.publish.ivy.tasks;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.InvalidUserDataException;
+import org.gradle.api.Transformer;
 import org.gradle.api.artifacts.repositories.IvyArtifactRepository;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.internal.artifacts.repositories.PublicationAwareRepository;
-import org.gradle.api.internal.project.ProjectInternal;
 import org.gradle.api.publish.internal.PublishOperation;
+import org.gradle.api.publish.ivy.IvyArtifact;
 import org.gradle.api.publish.ivy.IvyPublication;
 import org.gradle.api.publish.ivy.internal.publication.IvyPublicationInternal;
 import org.gradle.api.publish.ivy.internal.publisher.IvyNormalizedPublication;
@@ -31,8 +32,10 @@ import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.internal.Cast;
 import org.gradle.internal.operations.BuildOperationExecutor;
+import org.gradle.util.CollectionUtils;
 
 import javax.inject.Inject;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 import static org.gradle.api.publish.internal.PublishBuildOperationType.PublicationType.IVY;
@@ -148,12 +151,21 @@ public class PublishToIvyRepository extends DefaultTask {
     }
 
     private void doPublish(final IvyPublicationInternal publication, final IvyArtifactRepository repository) {
-        getBuildOperationExecutor().run(new PublishOperation((ProjectInternal) getProject(), publication, IVY, repository.getName()) {
+        final IvyNormalizedPublication normalizedPublication = publication.asNormalisedPublication();
+        getBuildOperationExecutor().run(new PublishOperation(getProject(), publication, IVY, repository.getName()) {
             @Override
             protected void publish() {
-                IvyNormalizedPublication normalizedPublication = publication.asNormalisedPublication();
-                IvyPublisher publisher = getIvyPublisher();
-                publisher.publish(normalizedPublication, Cast.cast(PublicationAwareRepository.class, repository));
+                getIvyPublisher().publish(normalizedPublication, Cast.cast(PublicationAwareRepository.class, repository));
+            }
+
+            @Override
+            protected List<String> getArtifacts() {
+                return CollectionUtils.collect((Iterable<IvyArtifact>) normalizedPublication.getAllArtifacts(), new Transformer<String, IvyArtifact>() {
+                    @Override
+                    public String transform(IvyArtifact mavenArtifact) {
+                        return publication.getArtifactFileName(mavenArtifact.getClassifier(), mavenArtifact.getExtension());
+                    }
+                });
             }
         });
     }

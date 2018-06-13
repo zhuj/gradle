@@ -67,6 +67,8 @@ public interface PublicationInternal<T extends PublicationArtifact> extends Publ
      */
     PublishedFile getPublishedFile(PublishArtifact source);
 
+    String getArtifactFileName(String classifier, String extension);
+
     interface PublishedFile {
         String getName();
 

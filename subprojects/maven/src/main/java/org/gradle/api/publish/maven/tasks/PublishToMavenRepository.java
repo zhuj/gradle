@@ -19,8 +19,6 @@ package org.gradle.api.publish.maven.tasks;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.internal.artifacts.repositories.transport.RepositoryTransportFactory;
-import org.gradle.api.internal.project.ProjectInternal;
-import org.gradle.api.publish.internal.PublishOperation;
 import org.gradle.api.publish.maven.internal.publication.MavenPublicationInternal;
 import org.gradle.api.publish.maven.internal.publisher.MavenPublisher;
 import org.gradle.api.publish.maven.internal.publisher.MavenRemotePublisher;
@@ -30,8 +28,6 @@ import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
 
 import javax.inject.Inject;
-
-import static org.gradle.api.publish.internal.PublishBuildOperationType.PublicationType.MAVEN;
 
 /**
  * Publishes a {@link org.gradle.api.publish.maven.MavenPublication} to a {@link MavenArtifactRepository}.
@@ -76,14 +72,14 @@ public class PublishToMavenRepository extends AbstractPublishToMaven {
         doPublish(publicationInternal, repository);
     }
 
-    private void doPublish(final MavenPublicationInternal publication, final MavenArtifactRepository repository) {
-        getBuildOperationExecutor().run(new PublishOperation((ProjectInternal) getProject(), publication, MAVEN, repository.getName()) {
+    private void doPublish(MavenPublicationInternal publication, final MavenArtifactRepository repository) {
+        getBuildOperationExecutor().run(new MavenPublishOperation(getProject(), publication, repository.getName()) {
             @Override
             protected void publish() {
                 MavenPublisher remotePublisher = new MavenRemotePublisher(getLoggingManagerFactory(), getMavenRepositoryLocator(), getTemporaryDirFactory(), getRepositoryTransportFactory());
                 MavenPublisher staticLockingPublisher = new StaticLockingMavenPublisher(remotePublisher);
                 MavenPublisher validatingPublisher = new ValidatingMavenPublisher(staticLockingPublisher);
-                validatingPublisher.publish(publication.asNormalisedPublication(), repository);
+                validatingPublisher.publish(normalizedPublication, repository);
             }
         });
     }
