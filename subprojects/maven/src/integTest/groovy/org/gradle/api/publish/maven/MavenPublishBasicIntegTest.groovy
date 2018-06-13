@@ -16,6 +16,8 @@
 
 package org.gradle.api.publish.maven
 
+import org.gradle.api.publish.internal.PublishBuildOperationType
+import org.gradle.integtests.fixtures.BuildOperationsFixture
 import org.gradle.integtests.fixtures.FeaturePreviewsFixture
 import org.gradle.integtests.fixtures.publish.maven.AbstractMavenPublishIntegTest
 import org.gradle.test.fixtures.maven.MavenLocalRepository
@@ -154,6 +156,52 @@ class MavenPublishBasicIntegTest extends AbstractMavenPublishIntegTest {
         and:
         resolveArtifacts(repoModule) {
             expectFiles 'root-1.0.jar'
+        }
+    }
+
+    def "emits build operations when publishing"() {
+        given:
+        def operations = new BuildOperationsFixture(executer, testDirectoryProvider)
+
+        and:
+        settingsFile << "rootProject.name = 'root'"
+        buildFile << """
+            apply plugin: 'maven-publish'
+            apply plugin: 'java'
+
+            group = 'group'
+            version = '1.0'
+
+            publishing {
+                repositories {
+                    maven {
+                        name 'my-repo'
+                        url "${mavenRepo.uri}"
+                    }
+                }
+                publications {
+                    myPub(MavenPublication) {
+                        from components.java
+                        groupId = 'myGroup'
+                        artifactId = 'myArtifactId'
+                        version = '42.0'
+                    }
+                }
+            }
+        """
+
+        when:
+        succeeds("publish")
+
+        then:
+        def records = operations.all(PublishBuildOperationType.class)
+        records.size() == 1
+        with(records[0]) {
+            details['name'] == 'myPub'
+            details['repository'] == 'my-repo'
+            result['group'] == 'myGroup'
+            result['name'] == 'myArtifactId'
+            result['version'] == '42.0'
         }
     }
 

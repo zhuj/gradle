@@ -16,24 +16,66 @@
 
 package org.gradle.api.publish.internal;
 
+import org.gradle.api.Project;
+import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.PublishException;
-import org.gradle.api.publish.Publication;
+import org.gradle.api.internal.GradleInternal;
+import org.gradle.internal.operations.BuildOperationContext;
+import org.gradle.internal.operations.BuildOperationDescriptor;
+import org.gradle.internal.operations.RunnableBuildOperation;
 
-public abstract class PublishOperation implements Runnable {
+public abstract class PublishOperation implements RunnableBuildOperation {
 
-    private final Publication publication;
+    private final Project project;
+    private final PublicationInternal<?> publication;
     private final String repository;
 
-    protected PublishOperation(Publication publication, String repository) {
+    protected PublishOperation(Project project, PublicationInternal<?> publication, String repository) {
+        this.project = project;
         this.publication = publication;
         this.repository = repository;
     }
 
+    @Override
+    public BuildOperationDescriptor.Builder description() {
+        GradleInternal gradle = (GradleInternal) project.getGradle();
+        return BuildOperationDescriptor.displayName(gradle.contextualize("Publishing"))
+            .details(new PublishBuildOperationType.Details() {
+                @Override
+                public String getName() {
+                    return publication.getName();
+                }
+
+                @Override
+                public String getRepository() {
+                    return repository;
+                }
+            });
+    }
+
     protected abstract void publish() throws Exception;
 
-    public void run() {
+    @Override
+    public void run(BuildOperationContext context) {
         try {
             publish();
+            final ModuleVersionIdentifier coordinates = publication.getCoordinates();
+            context.setResult(new PublishBuildOperationType.Result() {
+                @Override
+                public String getGroup() {
+                    return coordinates.getGroup();
+                }
+
+                @Override
+                public String getName() {
+                    return coordinates.getName();
+                }
+
+                @Override
+                public String getVersion() {
+                    return coordinates.getVersion();
+                }
+            });
         } catch (Exception e) {
             throw new PublishException(String.format("Failed to publish publication '%s' to repository '%s'", publication.getName(), repository), e);
         }

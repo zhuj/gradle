@@ -29,6 +29,7 @@ import org.gradle.api.publish.ivy.internal.publisher.IvyPublisher;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.internal.Cast;
+import org.gradle.internal.operations.BuildOperationExecutor;
 
 import javax.inject.Inject;
 import java.util.concurrent.Callable;
@@ -138,15 +139,20 @@ public class PublishToIvyRepository extends DefaultTask {
         throw new UnsupportedOperationException();
     }
 
+    @Inject
+    protected BuildOperationExecutor getBuildOperationExecutor() {
+        throw new UnsupportedOperationException();
+    }
+
     private void doPublish(final IvyPublicationInternal publication, final IvyArtifactRepository repository) {
-        new PublishOperation(publication, repository.getName()) {
+        getBuildOperationExecutor().run(new PublishOperation(getProject(), publication, repository.getName()) {
             @Override
             protected void publish() throws Exception {
                 IvyNormalizedPublication normalizedPublication = publication.asNormalisedPublication();
                 IvyPublisher publisher = getIvyPublisher();
                 publisher.publish(normalizedPublication, Cast.cast(PublicationAwareRepository.class, repository));
             }
-        }.run();
+        });
     }
 
 }

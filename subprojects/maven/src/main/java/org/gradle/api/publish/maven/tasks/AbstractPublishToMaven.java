@@ -25,6 +25,7 @@ import org.gradle.api.publish.maven.internal.publication.MavenPublicationInterna
 import org.gradle.api.tasks.Internal;
 import org.gradle.internal.Factory;
 import org.gradle.internal.logging.LoggingManagerInternal;
+import org.gradle.internal.operations.BuildOperationExecutor;
 
 import javax.inject.Inject;
 import java.util.concurrent.Callable;
@@ -77,6 +78,11 @@ public abstract class AbstractPublishToMaven extends DefaultTask {
     @Internal
     protected MavenPublicationInternal getPublicationInternal() {
         return toPublicationInternal(getPublication());
+    }
+
+    @Inject
+    protected BuildOperationExecutor getBuildOperationExecutor() {
+        throw new UnsupportedOperationException();
     }
 
     private static MavenPublicationInternal toPublicationInternal(MavenPublication publication) {

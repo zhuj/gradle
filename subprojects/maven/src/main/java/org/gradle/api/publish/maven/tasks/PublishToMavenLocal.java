@@ -39,7 +39,7 @@ public class PublishToMavenLocal extends AbstractPublishToMaven {
             throw new InvalidUserDataException("The 'publication' property is required");
         }
 
-        new PublishOperation(publication, "mavenLocal") {
+        getBuildOperationExecutor().run(new PublishOperation(getProject(), publication, "mavenLocal") {
             @Override
             protected void publish() throws Exception {
                 MavenPublisher localPublisher = new MavenLocalPublisher(getLoggingManagerFactory(), getMavenRepositoryLocator());
@@ -47,6 +47,6 @@ public class PublishToMavenLocal extends AbstractPublishToMaven {
                 MavenPublisher validatingPublisher = new ValidatingMavenPublisher(staticLockingPublisher);
                 validatingPublisher.publish(publication.asNormalisedPublication(), null);
             }
-        }.run();
+        });
     }
 }
