@@ -19,6 +19,7 @@ package org.gradle.api.publish.maven.tasks;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.internal.artifacts.repositories.transport.RepositoryTransportFactory;
+import org.gradle.api.internal.project.ProjectInternal;
 import org.gradle.api.publish.internal.PublishOperation;
 import org.gradle.api.publish.maven.internal.publication.MavenPublicationInternal;
 import org.gradle.api.publish.maven.internal.publisher.MavenPublisher;
@@ -74,7 +75,7 @@ public class PublishToMavenRepository extends AbstractPublishToMaven {
     }
 
     private void doPublish(final MavenPublicationInternal publication, final MavenArtifactRepository repository) {
-        getBuildOperationExecutor().run(new PublishOperation(getProject(), publication, repository.getName()) {
+        getBuildOperationExecutor().run(new PublishOperation((ProjectInternal) getProject(), publication, repository.getName()) {
             @Override
             protected void publish() throws Exception {
                 MavenPublisher remotePublisher = new MavenRemotePublisher(getLoggingManagerFactory(), getMavenRepositoryLocator(), getTemporaryDirFactory(), getRepositoryTransportFactory());

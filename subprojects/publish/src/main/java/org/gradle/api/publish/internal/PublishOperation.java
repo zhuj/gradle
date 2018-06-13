@@ -16,21 +16,21 @@
 
 package org.gradle.api.publish.internal;
 
-import org.gradle.api.Project;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.PublishException;
 import org.gradle.api.internal.GradleInternal;
+import org.gradle.api.internal.project.ProjectInternal;
 import org.gradle.internal.operations.BuildOperationContext;
 import org.gradle.internal.operations.BuildOperationDescriptor;
 import org.gradle.internal.operations.RunnableBuildOperation;
 
 public abstract class PublishOperation implements RunnableBuildOperation {
 
-    private final Project project;
+    private final ProjectInternal project;
     private final PublicationInternal<?> publication;
     private final String repository;
 
-    protected PublishOperation(Project project, PublicationInternal<?> publication, String repository) {
+    protected PublishOperation(ProjectInternal project, PublicationInternal<?> publication, String repository) {
         this.project = project;
         this.publication = publication;
         this.repository = repository;
@@ -41,6 +41,16 @@ public abstract class PublishOperation implements RunnableBuildOperation {
         GradleInternal gradle = (GradleInternal) project.getGradle();
         return BuildOperationDescriptor.displayName(gradle.contextualize("Publishing"))
             .details(new PublishBuildOperationType.Details() {
+                @Override
+                public String getProjectPath() {
+                    return project.getProjectPath().getPath();
+                }
+
+                @Override
+                public String getBuildPath() {
+                    return project.getGradle().getIdentityPath().getPath();
+                }
+
                 @Override
                 public String getName() {
                     return publication.getName();

@@ -21,6 +21,7 @@ import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.artifacts.repositories.IvyArtifactRepository;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.internal.artifacts.repositories.PublicationAwareRepository;
+import org.gradle.api.internal.project.ProjectInternal;
 import org.gradle.api.publish.internal.PublishOperation;
 import org.gradle.api.publish.ivy.IvyPublication;
 import org.gradle.api.publish.ivy.internal.publication.IvyPublicationInternal;
@@ -145,7 +146,7 @@ public class PublishToIvyRepository extends DefaultTask {
     }
 
     private void doPublish(final IvyPublicationInternal publication, final IvyArtifactRepository repository) {
-        getBuildOperationExecutor().run(new PublishOperation(getProject(), publication, repository.getName()) {
+        getBuildOperationExecutor().run(new PublishOperation((ProjectInternal) getProject(), publication, repository.getName()) {
             @Override
             protected void publish() throws Exception {
                 IvyNormalizedPublication normalizedPublication = publication.asNormalisedPublication();

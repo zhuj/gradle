@@ -16,6 +16,8 @@
 
 package org.gradle.api.publish.maven
 
+import org.gradle.api.publish.internal.PublishBuildOperationType
+import org.gradle.integtests.fixtures.BuildOperationsFixture
 import org.gradle.integtests.fixtures.publish.maven.AbstractMavenPublishIntegTest
 import spock.lang.Issue
 
@@ -25,12 +27,27 @@ class MavenPublishMultiProjectIntegTest extends AbstractMavenPublishIntegTest {
     def project3 = javaLibrary(mavenRepo.module("org.gradle.test", "project3", "3.0"))
 
     def "project dependency correctly reflected in POM"() {
+        given:
+        def operations = new BuildOperationsFixture(executer, testDirectoryProvider)
         createBuildScripts()
 
         when:
         run "publish"
 
         then:
+        def records = operations.all(PublishBuildOperationType.class)
+        records.size() == 3
+        records.each {
+            assert it.details['name'] == 'maven'
+            assert it.details['repository'] == 'maven'
+            assert it.details['buildPath'] == ':'
+            assert it.result['group'] == 'org.gradle.test'
+        }
+        records.collect { it.result['name'] } as Set == ['project1', 'project2', 'project3'] as Set
+        records.collect { it.result['version'] } as Set == ['1.0', '2.0', '3.0'] as Set
+        records.collect { it.details['projectPath'] } as Set == [':project1', ':project2', ':project3'] as Set
+
+        and:
         projectsCorrectlyPublished()
     }
 

@@ -23,6 +23,8 @@ public final class PublishBuildOperationType implements BuildOperationType<Publi
 
     @UsedByScanPlugin
     public interface Details {
+        String getProjectPath();
+        String getBuildPath();
         String getName();
         String getRepository();
     }
