@@ -22,10 +22,10 @@ import org.gradle.kotlin.dsl.*
 
 class IntegrationTestsPlugin : Plugin<Project> {
     override fun apply(project: Project): Unit = project.run {
-        val sourceSet = addSourceSet(TestType.INTEGRATION)
+//        val sourceSet = addSourceSet(TestType.INTEGRATION)
         addDependenciesAndConfigurations(TestType.INTEGRATION)
-        createTasks(sourceSet, TestType.INTEGRATION)
-        configureIde(TestType.INTEGRATION)
+//        createTasks(sourceSet, TestType.INTEGRATION)
+//        configureIde(TestType.INTEGRATION)
 
         // TODO Model as an extension object. The name is also misleading, as this applies to integration tests as well as cross version tests.
         val integTestTasks by extra { tasks.withType<IntegrationTest>() }

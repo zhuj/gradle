@@ -36,10 +36,10 @@ testFixtures {
     from(':platformBase')
 }
 
-integTest {
-    exclude 'org/gradle/play/prepare/**'
-}
-
+//integTest {
+//    exclude 'org/gradle/play/prepare/**'
+//}
+//
 def integTestPrepare = tasks.register("integTestPrepare", org.gradle.gradlebuild.test.integrationtests.IntegrationTest) {
     systemProperties['org.gradle.integtest.executer'] = 'embedded'
     if (BuildEnvironment.isCiServer) {

@@ -27,15 +27,15 @@ import releasedVersions
 
 class CrossVersionTestsPlugin : Plugin<Project> {
     override fun apply(project: Project): Unit = project.run {
-        val sourceSet = addSourceSet(TestType.CROSSVERSION)
+//        val sourceSet = addSourceSet(TestType.CROSSVERSION)
         addDependenciesAndConfigurations(TestType.CROSSVERSION)
-        dependencies {
-            "crossVersionTestRuntime"(project(":toolingApiBuilders"))
-        }
-        createTasks(sourceSet, TestType.CROSSVERSION)
-        createAggregateTasks(sourceSet)
-        configureIde(TestType.CROSSVERSION)
-        configureTestFixturesForCrossVersionTests()
+//        dependencies {
+//            "crossVersionTestRuntime"(project(":toolingApiBuilders"))
+//        }
+//        createTasks(sourceSet, TestType.CROSSVERSION)
+//        createAggregateTasks(sourceSet)
+//        configureIde(TestType.CROSSVERSION)
+//        configureTestFixturesForCrossVersionTests()
     }
 
     private

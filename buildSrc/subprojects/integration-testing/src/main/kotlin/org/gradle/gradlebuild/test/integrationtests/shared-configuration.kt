@@ -32,21 +32,22 @@ internal
 fun Project.addDependenciesAndConfigurations(testType: TestType) {
     val prefix = testType.prefix
     configurations {
-        getByName("${prefix}TestCompile") { extendsFrom(configurations["testCompile"]) }
-        getByName("${prefix}TestRuntime") { extendsFrom(configurations["testRuntime"]) }
-        getByName("${prefix}TestImplementation") { extendsFrom(configurations["testImplementation"]) }
-        getByName("${prefix}TestRuntimeOnly") { extendsFrom(configurations["testRuntimeOnly"]) }
-        getByName("partialDistribution") { extendsFrom(configurations["${prefix}TestRuntimeClasspath"]) }
+        create("${prefix}Test")
+        create("${prefix}TestCompile") { extendsFrom(configurations["testCompile"]) }
+        create("${prefix}TestRuntime") { extendsFrom(configurations["testRuntime"]) }
+        create("${prefix}TestImplementation") { extendsFrom(configurations["testImplementation"]) }
+        create("${prefix}TestRuntimeOnly") { extendsFrom(configurations["testRuntimeOnly"]) }
+//        getByName("partialDistribution") { extendsFrom(configurations["${prefix}TestRuntimeClasspath"]) }
     }
 
     dependencies {
-        "${prefix}TestCompile"(project(":internalIntegTesting"))
-
-        //so that implicit help tasks are available:
-        "${prefix}TestRuntime"(project(":diagnostics"))
-
-        //So that the wrapper and init task are added when integTests are run via commandline
-        "${prefix}TestRuntime"(project(":buildInit"))
+//        "${prefix}TestCompile"(project(":internalIntegTesting"))
+//
+//        //so that implicit help tasks are available:
+//        "${prefix}TestRuntime"(project(":diagnostics"))
+//
+//        //So that the wrapper and init task are added when integTests are run via commandline
+//        "${prefix}TestRuntime"(project(":buildInit"))
     }
 }
 

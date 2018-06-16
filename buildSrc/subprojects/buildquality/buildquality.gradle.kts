@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     `java-gradle-plugin`
 }
@@ -46,4 +48,9 @@ gradlePlugin {
     }
 }
 
-
+afterEvaluate {
+    val compileKotlin: KotlinCompile by tasks
+    compileKotlin.classpath.forEach {
+        println("Classpath: $it")
+    }
+}

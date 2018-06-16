@@ -44,9 +44,9 @@ integTestTasks.configureEach { task ->
     task.systemProperty "org.gradle.userguide.samples.filter", System.getProperty("org.gradle.userguide.samples.filter")
 }
 
-parallelIntegTest {
-    systemProperty "org.gradle.userguide.samples.exclude", "multiProjectBuildSrc,multiprojectMessagesHack"
-}
+//parallelIntegTest {
+//    systemProperty "org.gradle.userguide.samples.exclude", "multiProjectBuildSrc,multiprojectMessagesHack"
+//}
 
 import org.gradle.gradlebuild.testing.integrationtests.cleanup.WhenNotEmpty
 testFilesCleanup {
