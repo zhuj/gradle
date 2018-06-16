@@ -50,7 +50,7 @@ abstract class AbstractSmokeTest extends Specification {
             .withGradleInstallation(IntegrationTestBuildContext.INSTANCE.gradleHomeDir)
             .withTestKitDir(IntegrationTestBuildContext.INSTANCE.gradleUserHomeDir)
             .withProjectDir(testProjectDir.root)
-            .withArguments(tasks.toList() + ['-s'])
+            .withArguments(tasks.toList() + ['-s', '-i'])
     }
 
     protected void useSample(String sampleDirectory) {
