@@ -15,23 +15,12 @@
  */
 package org.gradle.gradlebuild.test.fixtures
 
-import accessors.groovy
 import accessors.java
-
-import library
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
 import org.gradle.kotlin.dsl.*
-
-import org.gradle.plugins.ide.eclipse.EclipsePlugin
-import org.gradle.plugins.ide.eclipse.model.EclipseModel
-import org.gradle.plugins.ide.idea.IdeaPlugin
-import org.gradle.plugins.ide.idea.model.IdeaModel
-
-import testLibraries
-import testLibrary
 
 
 /**
@@ -57,7 +46,7 @@ open class TestFixturesPlugin : Plugin<Project> {
             configureAsProducer()
         }
 
-        configureAsConsumer()
+//        configureAsConsumer()
     }
 
     private
@@ -94,33 +83,33 @@ open class TestFixturesPlugin : Plugin<Project> {
             runtimeClasspath = output + compileClasspath + configurations["testFixturesRuntimeClasspath"]
         }
 
-        dependencies {
-            outputDirs(testFixtures.output)
-            testFixturesUsageCompile(project(path))
-            testFixturesCompile(library("junit"))
-            testFixturesCompile(testLibrary("spock"))
-            testLibraries("jmock").forEach { testFixturesCompile(it) }
-        }
-
-        plugins.withType<IdeaPlugin> {
-            configure<IdeaModel> {
-                module {
-                    testSourceDirs = testSourceDirs + testFixtures.groovy.srcDirs + testFixtures.resources.srcDirs
-                }
-            }
-        }
-
-        plugins.withType<EclipsePlugin> {
-            configure<EclipseModel> {
-                classpath {
-                    plusConfigurations.add(testFixturesCompile)
-                    plusConfigurations.add(testFixturesRuntime)
-
-                    //avoiding the certain output directories from the classpath in Eclipse
-                    minusConfigurations.add(outputDirs)
-                }
-            }
-        }
+//        dependencies {
+//            outputDirs(testFixtures.output)
+//            testFixturesUsageCompile(project(path))
+//            testFixturesCompile(library("junit"))
+//            testFixturesCompile(testLibrary("spock"))
+//            testLibraries("jmock").forEach { testFixturesCompile(it) }
+//        }
+//
+//        plugins.withType<IdeaPlugin> {
+//            configure<IdeaModel> {
+//                module {
+//                    testSourceDirs = testSourceDirs + testFixtures.groovy.srcDirs + testFixtures.resources.srcDirs
+//                }
+//            }
+//        }
+//
+//        plugins.withType<EclipsePlugin> {
+//            configure<EclipseModel> {
+//                classpath {
+//                    plusConfigurations.add(testFixturesCompile)
+//                    plusConfigurations.add(testFixturesRuntime)
+//
+//                    //avoiding the certain output directories from the classpath in Eclipse
+//                    minusConfigurations.add(outputDirs)
+//                }
+//            }
+//        }
     }
 
     private
