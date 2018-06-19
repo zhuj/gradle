@@ -49,6 +49,7 @@ dependencies {
     jmh("io.airlift:aircompressor:0.8")
     jmh("org.iq80.snappy:snappy:0.4")
     jmh("org.kamranzafar:jtar:2.3")
+    jmh(library("commons_lang") + ":" + libraryVersion("commons_lang"))
 }
 
 gradlebuildJava {
