@@ -97,8 +97,46 @@ public final class SnapshotTaskInputsBuildOperationType implements BuildOperatio
          * Null if the task has no inputs.
          */
         @Nullable
+        @Deprecated
         Map<String, String> getInputHashes();
 
+        /**
+         * Hashes of each of the non file input properties.
+         *
+         * key = property name
+         * value = hash
+         *
+         * Ordered by key, lexicographically.
+         * No null keys or values.
+         * Never empty.
+         * Null if the task has no inputs.
+         */
+        @Nullable
+        Map<String, String> getInputValueHashes();
+
+        interface InputFilePropertyVisitor {
+            void preProperty(VisitState state);
+
+            void preRoot(VisitState state);
+
+            void file(VisitState state);
+
+            void postRoot(VisitState state);
+
+            void postProperty(VisitState state);
+        }
+
+        interface VisitState {
+            String getPropertyName();
+
+            String getPropertyHash();
+
+            String getPath();
+
+            String getHash();
+        }
+
+        void visitInputFileProperties(InputFilePropertyVisitor visitor);
 
         /**
          * Names of input properties which have been loaded by non Gradle managed classloader.
@@ -119,6 +157,7 @@ public final class SnapshotTaskInputsBuildOperationType implements BuildOperatio
          */
         @Nullable
         List<String> getOutputPropertyNames();
+
 
     }
 

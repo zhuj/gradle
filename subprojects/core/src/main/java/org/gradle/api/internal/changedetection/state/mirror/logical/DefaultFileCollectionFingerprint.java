@@ -26,6 +26,7 @@ import org.gradle.api.internal.changedetection.state.FileCollectionSnapshot;
 import org.gradle.api.internal.changedetection.state.FileContentSnapshot;
 import org.gradle.api.internal.changedetection.state.NormalizedFileSnapshot;
 import org.gradle.api.internal.changedetection.state.SnapshotMapSerializer;
+import org.gradle.api.internal.changedetection.state.mirror.PhysicalSnapshot;
 import org.gradle.caching.internal.BuildCacheHasher;
 import org.gradle.caching.internal.DefaultBuildCacheHasher;
 import org.gradle.internal.Factories;
@@ -47,6 +48,8 @@ public class DefaultFileCollectionFingerprint implements FileCollectionSnapshot 
 
     private final FingerprintCompareStrategy strategy;
     private final Map<String, NormalizedFileSnapshot> snapshots;
+    private final List<PhysicalSnapshot> trees;
+
     private HashCode hash;
     private final Factory<List<File>> cachedElementsFactory = Factories.softReferenceCache(new Factory<List<File>>() {
         @Override
@@ -55,14 +58,23 @@ public class DefaultFileCollectionFingerprint implements FileCollectionSnapshot 
         }
     });
 
-    public DefaultFileCollectionFingerprint(FingerprintCompareStrategy strategy, Map<String, NormalizedFileSnapshot> snapshots, @Nullable HashCode hash) {
+    public DefaultFileCollectionFingerprint(FingerprintCompareStrategy strategy, Map<String, NormalizedFileSnapshot> snapshots) {
+        this.strategy = strategy;
+        this.snapshots = snapshots;
+        this.trees = null;
+    }
+
+    public DefaultFileCollectionFingerprint(FingerprintCompareStrategy strategy, Map<String, NormalizedFileSnapshot> snapshots, List<PhysicalSnapshot> trees) {
+        this.strategy = strategy;
+        this.snapshots = snapshots;
+        this.trees = trees;
+    }
+
+    private DefaultFileCollectionFingerprint(FingerprintCompareStrategy strategy, Map<String, NormalizedFileSnapshot> snapshots, @Nullable HashCode hash) {
         this.strategy = strategy;
         this.snapshots = snapshots;
         this.hash = hash;
-    }
-
-    public DefaultFileCollectionFingerprint(FingerprintCompareStrategy strategy, Map<String, NormalizedFileSnapshot> snapshots) {
-        this(strategy, snapshots, null);
+        this.trees = null;
     }
 
     @Override
@@ -107,6 +119,15 @@ public class DefaultFileCollectionFingerprint implements FileCollectionSnapshot 
                 return normalizedSnapshot.getSnapshot();
             }
         });
+    }
+
+    @Override
+    public List<PhysicalSnapshot> getTrees() {
+        if (trees == null) {
+            throw new UnsupportedOperationException();
+        }
+
+        return trees;
     }
 
     @Override

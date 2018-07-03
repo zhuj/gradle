@@ -45,7 +45,7 @@ public class FileCollectionFingerprintBuilder implements FileCollectionSnapshotB
             return EmptyFileCollectionSnapshot.INSTANCE;
         }
 
-        return new DefaultFileCollectionFingerprint(fingerprintingStrategy.getCompareStrategy(), snapshots);
+        return new DefaultFileCollectionFingerprint(fingerprintingStrategy.getCompareStrategy(), snapshots, roots);
     }
 
     @Override

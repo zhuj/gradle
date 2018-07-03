@@ -18,6 +18,7 @@ package org.gradle.api.internal.changedetection.state;
 
 import org.gradle.api.internal.changedetection.rules.FileChange;
 import org.gradle.api.internal.changedetection.rules.TaskStateChangeVisitor;
+import org.gradle.api.internal.changedetection.state.mirror.PhysicalSnapshot;
 import org.gradle.caching.internal.BuildCacheHasher;
 import org.gradle.internal.hash.HashCode;
 import org.gradle.internal.hash.Hashing;
@@ -25,6 +26,7 @@ import org.gradle.internal.hash.Hashing;
 import java.io.File;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 public class EmptyFileCollectionSnapshot implements FileCollectionSnapshot {
@@ -68,6 +70,11 @@ public class EmptyFileCollectionSnapshot implements FileCollectionSnapshot {
     @Override
     public void appendToHasher(BuildCacheHasher hasher) {
         hasher.putHash(SIGNATURE);
+    }
+
+    @Override
+    public List<PhysicalSnapshot> getTrees() {
+        return Collections.emptyList();
     }
 
     @Override

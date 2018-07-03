@@ -127,7 +127,7 @@ class ResolveBuildCacheKeyExecuterTest extends Specification {
         def adapter = new ResolveBuildCacheKeyExecuter.OperationResultImpl(key)
 
         when:
-        inputs.inputHashes >> ImmutableSortedMap.copyOf(b: HashCode.fromInt(0x000000bb), a: HashCode.fromInt(0x000000aa))
+        inputs.inputValueHashes >> ImmutableSortedMap.copyOf(b: HashCode.fromInt(0x000000bb), a: HashCode.fromInt(0x000000aa))
         then:
         adapter.inputHashes == [a: "000000aa", b: "000000bb"]
 

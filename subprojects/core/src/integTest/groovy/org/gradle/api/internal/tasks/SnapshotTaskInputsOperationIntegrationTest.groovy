@@ -107,7 +107,7 @@ class SnapshotTaskInputsOperationIntegrationTest extends AbstractIntegrationSpec
         result.containsKey("classLoaderHash") && result.classLoaderHash == null
         result.containsKey("actionClassLoaderHashes") && result.actionClassLoaderHashes == null
         result.containsKey("actionClassNames") && result.actionClassNames == null
-        result.containsKey("inputHashes") && result.inputHashes == null
+        result.containsKey("inputValueHashes") && result.inputValueHashes == null
         result.containsKey("inputPropertiesLoadedByUnknownClassLoader") && result.inputPropertiesLoadedByUnknownClassLoader == null
         result.containsKey("outputPropertyNames") && result.outputPropertyNames == null
     }
@@ -128,7 +128,7 @@ class SnapshotTaskInputsOperationIntegrationTest extends AbstractIntegrationSpec
         result.classLoaderHash != null
         result.actionClassLoaderHashes != null
         result.actionClassNames != null
-        result.containsKey("inputHashes") && result.inputHashes == null
+        result.containsKey("inputValueHashes") && result.inputValueHashes == null
         result.containsKey("inputPropertiesLoadedByUnknownClassLoader") && result.inputPropertiesLoadedByUnknownClassLoader == null
         result.outputPropertyNames != null
     }

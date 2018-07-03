@@ -17,10 +17,12 @@
 package org.gradle.api.internal.changedetection.state;
 
 import org.gradle.api.internal.changedetection.rules.TaskStateChangeVisitor;
+import org.gradle.api.internal.changedetection.state.mirror.PhysicalSnapshot;
 import org.gradle.internal.hash.HashCode;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -46,4 +48,6 @@ public interface FileCollectionSnapshot extends Snapshot {
     Map<String, NormalizedFileSnapshot> getSnapshots();
 
     Map<String, FileContentSnapshot> getContentSnapshots();
+
+    List<PhysicalSnapshot> getTrees();
 }
