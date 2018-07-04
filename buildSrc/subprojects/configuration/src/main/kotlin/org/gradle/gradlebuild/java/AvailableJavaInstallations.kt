@@ -41,11 +41,11 @@ const val testJavaHomePropertyName = "testJavaHome"
 
 
 private
-const val oracleJdk9 = "Oracle JDK 8"
+const val oracleJdk9 = "Oracle JDK 9"
 
 
 private
-const val oracleJdk8 = "Oracle JDK 9"
+const val oracleJdk8 = "Oracle JDK 8"
 
 
 private
