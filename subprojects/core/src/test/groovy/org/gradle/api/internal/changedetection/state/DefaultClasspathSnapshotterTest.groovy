@@ -44,14 +44,13 @@ class DefaultClasspathSnapshotterTest extends Specification {
     def directoryFileTreeFactory = TestFiles.directoryFileTreeFactory()
     def fileSystemMirror = new DefaultFileSystemMirror(Stub(WellKnownFileLocations))
     def fileHasher = new TestFileHasher()
-    def fileSystemSnapshotter = new DefaultFileSystemSnapshotter(fileHasher, stringInterner, fileSystem, directoryFileTreeFactory, fileSystemMirror)
+    def fileSystemSnapshotter = new DefaultFileSystemSnapshotter(fileHasher, stringInterner, fileSystem, fileSystemMirror)
     InMemoryIndexedCache<HashCode, HashCode> resourceHashesCache = new InMemoryIndexedCache<>(new HashCodeSerializer())
     def cacheService = new DefaultResourceSnapshotterCacheService(resourceHashesCache)
     def snapshotter = new DefaultClasspathSnapshotter(
         cacheService,
-        directoryFileTreeFactory,
-        fileSystemSnapshotter,
-        stringInterner)
+        fileSystemSnapshotter
+    )
 
     def "directories and missing files are ignored"() {
         def emptyDir = file('root/emptyDir').createDir()

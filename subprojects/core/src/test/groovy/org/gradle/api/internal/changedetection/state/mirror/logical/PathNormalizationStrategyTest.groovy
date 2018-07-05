@@ -23,13 +23,14 @@ import org.gradle.api.internal.changedetection.state.DefaultWellKnownFileLocatio
 import org.gradle.api.internal.changedetection.state.FileContentSnapshot
 import org.gradle.api.internal.changedetection.state.mirror.PhysicalSnapshot
 import org.gradle.api.internal.file.TestFiles
+import org.gradle.api.internal.file.collections.ImmutableFileCollection
 import org.gradle.internal.hash.TestFileHasher
 import org.gradle.test.fixtures.AbstractProjectBuilderSpec
 import org.gradle.test.fixtures.file.TestFile
 
 class PathNormalizationStrategyTest extends AbstractProjectBuilderSpec {
     public static final String IGNORED = "IGNORED"
-    List<PhysicalSnapshot> roots
+    Iterable<PhysicalSnapshot> roots
     TestFile jarFile1
     TestFile jarFile2
     TestFile resources
@@ -58,16 +59,14 @@ class PathNormalizationStrategyTest extends AbstractProjectBuilderSpec {
         emptyDir.mkdirs()
         missingFile = file("missing-file")
 
-        def directoryFileTreeFactory = TestFiles.directoryFileTreeFactory()
-        def snapshotter = new DefaultFileSystemSnapshotter(new TestFileHasher(), interner, TestFiles.fileSystem(), directoryFileTreeFactory, new DefaultFileSystemMirror(new DefaultWellKnownFileLocations([])))
+        def snapshotter = new DefaultFileSystemSnapshotter(new TestFileHasher(), interner, TestFiles.fileSystem(), new DefaultFileSystemMirror(new DefaultWellKnownFileLocations([])))
 
-        roots = [
-            snapshotter.snapshotSelf(jarFile1),
-            snapshotter.snapshotSelf(this.jarFile2),
-            snapshotter.snapshotDirectoryTree(directoryFileTreeFactory.create(this.resources)),
-            snapshotter.snapshotDirectoryTree(directoryFileTreeFactory.create(this.emptyDir)),
-            snapshotter.snapshotSelf(missingFile)
-        ]
+        roots = snapshotter.snapshotFileCollection(ImmutableFileCollection.of(
+            jarFile1,
+            jarFile2,
+            resources,
+            emptyDir,
+            missingFile))
     }
 
 

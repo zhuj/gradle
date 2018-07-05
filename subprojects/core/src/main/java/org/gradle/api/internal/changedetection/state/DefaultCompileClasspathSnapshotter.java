@@ -17,30 +17,31 @@
 package org.gradle.api.internal.changedetection.state;
 
 import org.gradle.api.file.FileCollection;
-import org.gradle.api.internal.cache.StringInterner;
 import org.gradle.api.internal.changedetection.state.mirror.logical.ClasspathFingerprintingStrategy;
-import org.gradle.api.internal.file.collections.DirectoryFileTreeFactory;
 import org.gradle.api.tasks.CompileClasspathNormalizer;
 import org.gradle.api.tasks.FileNormalizer;
 import org.gradle.normalization.internal.InputNormalizationStrategy;
 
 import static org.gradle.api.internal.changedetection.state.mirror.logical.ClasspathFingerprintingStrategy.NonJarFingerprintingStrategy.IGNORE;
 
-public class DefaultCompileClasspathSnapshotter extends AbstractFileCollectionSnapshotter implements CompileClasspathSnapshotter {
+public class DefaultCompileClasspathSnapshotter implements CompileClasspathSnapshotter {
     private final ResourceHasher classpathResourceHasher;
     private final ResourceSnapshotterCacheService cacheService;
+    private final FileSystemSnapshotter fileSystemSnapshotter;
 
-    public DefaultCompileClasspathSnapshotter(ResourceSnapshotterCacheService cacheService, DirectoryFileTreeFactory directoryFileTreeFactory, FileSystemSnapshotter fileSystemSnapshotter, StringInterner stringInterner) {
-        super(stringInterner, directoryFileTreeFactory, fileSystemSnapshotter);
+    public DefaultCompileClasspathSnapshotter(ResourceSnapshotterCacheService cacheService, FileSystemSnapshotter fileSystemSnapshotter) {
         this.cacheService = cacheService;
         this.classpathResourceHasher = new CachingResourceHasher(new AbiExtractingClasspathResourceHasher(), cacheService);
+        this.fileSystemSnapshotter = fileSystemSnapshotter;
     }
 
     @Override
     public FileCollectionSnapshot snapshot(FileCollection files, PathNormalizationStrategy pathNormalizationStrategy, InputNormalizationStrategy inputNormalizationStrategy) {
-        return super.snapshot(
+        return FileCollectionSnapshotters.createFingerprint(
             files,
-            new ClasspathFingerprintingStrategy(IGNORE, classpathResourceHasher, cacheService));
+            new ClasspathFingerprintingStrategy(IGNORE, classpathResourceHasher, cacheService),
+            fileSystemSnapshotter
+        );
     }
 
     @Override
