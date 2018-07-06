@@ -18,7 +18,6 @@ package org.gradle.api.internal.changedetection.state.mirror.logical;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSortedMap;
 import org.gradle.api.internal.changedetection.state.DefaultNormalizedFileSnapshot;
 import org.gradle.api.internal.changedetection.state.FileContentSnapshot;
 import org.gradle.api.internal.changedetection.state.FileHashSnapshot;
@@ -62,7 +61,6 @@ public class ClasspathFingerprintingStrategy implements FingerprintingStrategy {
         final ImmutableMap.Builder<String, NormalizedFileSnapshot> builder = ImmutableMap.builder();
         final HashSet<String> processedEntries = new HashSet<String>();
         for (PhysicalSnapshot root : roots) {
-            final ImmutableSortedMap.Builder<String, NormalizedFileSnapshot> rootBuilder = ImmutableSortedMap.naturalOrder();
             root.accept(new ClasspathSnapshottingVisitor(new PhysicalSnapshotVisitor() {
                 private final RelativePathHolder relativePathHolder = new RelativePathHolder();
 
@@ -76,7 +74,7 @@ public class ClasspathFingerprintingStrategy implements FingerprintingStrategy {
                 public void visit(String absolutePath, String name, FileContentSnapshot content) {
                     if (processedEntries.add(absolutePath)) {
                         NormalizedFileSnapshot normalizedFileSnapshot = relativePathHolder.isRoot() ? content : createNormalizedSnapshot(name, content);
-                        rootBuilder.put(
+                        builder.put(
                             absolutePath,
                             normalizedFileSnapshot);
                     }
@@ -94,7 +92,6 @@ public class ClasspathFingerprintingStrategy implements FingerprintingStrategy {
                     relativePathHolder.leave();
                 }
             }));
-            builder.putAll(rootBuilder.build());
         }
         return builder.build();
     }

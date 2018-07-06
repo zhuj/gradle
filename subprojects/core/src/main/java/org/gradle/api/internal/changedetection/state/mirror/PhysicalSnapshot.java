@@ -18,6 +18,8 @@ package org.gradle.api.internal.changedetection.state.mirror;
 
 import org.gradle.internal.file.FileType;
 
+import java.util.Comparator;
+
 /**
  * A snapshot of a file/directory tree.
  *
@@ -48,6 +50,13 @@ public interface PhysicalSnapshot {
 
         @Override
         public void accept(PhysicalSnapshotVisitor visitor) {
+        }
+    };
+
+    Comparator<PhysicalSnapshot> PHYSICAL_SNAPSHOT_COMPARATOR = new Comparator<PhysicalSnapshot>() {
+        @Override
+        public int compare(PhysicalSnapshot o1, PhysicalSnapshot o2) {
+            return o1.getName().compareTo(o2.getName());
         }
     };
 

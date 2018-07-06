@@ -48,6 +48,7 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumSet;
 import java.util.List;
@@ -138,6 +139,7 @@ public class MirrorUpdatingDirectoryWalker {
                     }
                     String directoryPath = relativePath.leave();
                     List<PhysicalSnapshot> children = levelHolder.removeLast();
+                    Collections.sort(children, PhysicalSnapshot.PHYSICAL_SNAPSHOT_COMPARATOR);
                     ImmutablePhysicalDirectorySnapshot directorySnapshot = new ImmutablePhysicalDirectorySnapshot(internedAbsolutePath(dir), directoryPath, children);
                     List<PhysicalSnapshot> siblings = levelHolder.peekLast();
                     if (siblings != null) {
