@@ -30,11 +30,16 @@ public class FetchAllCppProjects implements BuildAction<List<CppProject>>, Seria
     @Override
     public List<CppProject> execute(BuildController controller) {
         List<CppProject> projects = new ArrayList<CppProject>();
+        collectModelsForBuild(controller, controller.getBuildModel(), projects);
         for (GradleBuild build : controller.getBuildModel().getAllBuilds()) {
-            for (BasicGradleProject project : build.getProjects()) {
-                projects.add(controller.getModel(project, CppProject.class));
-            }
+            collectModelsForBuild(controller, build, projects);
         }
         return projects;
+    }
+
+    private void collectModelsForBuild(BuildController controller, GradleBuild build, List<CppProject> projects) {
+        for (BasicGradleProject project : build.getProjects()) {
+            projects.add(controller.getModel(project, CppProject.class));
+        }
     }
 }
