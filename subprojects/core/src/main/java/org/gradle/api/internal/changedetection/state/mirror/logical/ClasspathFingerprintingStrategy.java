@@ -16,12 +16,13 @@
 
 package org.gradle.api.internal.changedetection.state.mirror.logical;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedMap;
+import com.google.common.collect.Iterables;
 import org.gradle.api.internal.changedetection.state.DefaultNormalizedFileSnapshot;
 import org.gradle.api.internal.changedetection.state.JarHasher;
 import org.gradle.api.internal.changedetection.state.NormalizedFileSnapshot;
+import org.gradle.api.internal.changedetection.state.ResourceFilter;
 import org.gradle.api.internal.changedetection.state.ResourceHasher;
 import org.gradle.api.internal.changedetection.state.ResourceSnapshotterCacheService;
 import org.gradle.api.internal.changedetection.state.mirror.PhysicalFileSnapshot;
@@ -30,6 +31,7 @@ import org.gradle.api.internal.changedetection.state.mirror.PhysicalSnapshotVisi
 import org.gradle.api.internal.changedetection.state.mirror.RelativePathHolder;
 import org.gradle.api.internal.changedetection.state.mirror.RelativePathTracker;
 import org.gradle.caching.internal.DefaultBuildCacheHasher;
+import org.gradle.internal.Factory;
 import org.gradle.internal.FileUtils;
 import org.gradle.internal.file.FileType;
 import org.gradle.internal.fingerprint.IgnoredPathFingerprint;
@@ -42,16 +44,18 @@ import java.util.Map;
 public class ClasspathFingerprintingStrategy implements FingerprintingStrategy {
 
     private final NonJarFingerprintingStrategy nonJarFingerprintingStrategy;
+    private final ResourceFilter classpathResourceFilter;
     private final ResourceSnapshotterCacheService cacheService;
     private final ResourceHasher classpathResourceHasher;
     private final JarHasher jarHasher;
     private final HashCode jarHasherConfigurationHash;
 
-    public ClasspathFingerprintingStrategy(NonJarFingerprintingStrategy nonJarFingerprintingStrategy, ResourceHasher classpathResourceHasher, ResourceSnapshotterCacheService cacheService) {
+    public ClasspathFingerprintingStrategy(NonJarFingerprintingStrategy nonJarFingerprintingStrategy, ResourceHasher classpathResourceHasher, ResourceFilter classpathResourceFilter, ResourceSnapshotterCacheService cacheService) {
         this.nonJarFingerprintingStrategy = nonJarFingerprintingStrategy;
+        this.classpathResourceFilter = classpathResourceFilter;
         this.cacheService = cacheService;
         this.classpathResourceHasher = classpathResourceHasher;
-        this.jarHasher = new JarHasher(classpathResourceHasher);
+        this.jarHasher = new JarHasher(classpathResourceHasher, classpathResourceFilter);
         DefaultBuildCacheHasher hasher = new DefaultBuildCacheHasher();
         jarHasher.appendConfigurationToHasher(hasher);
         this.jarHasherConfigurationHash = hasher.hash();
@@ -129,6 +133,12 @@ public class ClasspathFingerprintingStrategy implements FingerprintingStrategy {
 
         private final ClasspathSnapshotVisitor delegate;
         private RelativePathTracker relativePathTracker = new RelativePathTracker();
+        private Factory<String[]> relativePathFactory = new Factory<String[]>() {
+            @Override
+            public String[] create() {
+                return Iterables.toArray(relativePathTracker.getRelativePath(), String.class);
+            }
+        };
 
         public ClasspathContentSnapshottingVisitor(ClasspathSnapshotVisitor delegate) {
             this.delegate = delegate;
@@ -158,8 +168,12 @@ public class ClasspathFingerprintingStrategy implements FingerprintingStrategy {
         @Nullable
         private HashCode fingerprintTreeFile(PhysicalFileSnapshot fileSnapshot) {
             relativePathTracker.enter(fileSnapshot.getName());
-            HashCode newHash = classpathResourceHasher.hash(fileSnapshot, relativePathTracker.getRelativePath());
+            boolean shouldBeIgnored = classpathResourceFilter.shouldBeIgnored(relativePathFactory);
             relativePathTracker.leave();
+            if (shouldBeIgnored) {
+                return null;
+            }
+            HashCode newHash = classpathResourceHasher.hash(fileSnapshot);
             return newHash;
         }
 
@@ -180,7 +194,7 @@ public class ClasspathFingerprintingStrategy implements FingerprintingStrategy {
 
     @Nullable
     private HashCode snapshotJarContents(PhysicalFileSnapshot fileSnapshot) {
-        return cacheService.hashFile(fileSnapshot, ImmutableList.<String>of(), jarHasher, jarHasherConfigurationHash);
+        return cacheService.hashFile(fileSnapshot, jarHasher, jarHasherConfigurationHash);
     }
 
     @Override
