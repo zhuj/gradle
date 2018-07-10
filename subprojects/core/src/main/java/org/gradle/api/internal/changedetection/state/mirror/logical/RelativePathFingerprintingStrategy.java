@@ -19,7 +19,6 @@ package org.gradle.api.internal.changedetection.state.mirror.logical;
 import com.google.common.collect.ImmutableMap;
 import org.gradle.api.internal.changedetection.state.DefaultNormalizedFileSnapshot;
 import org.gradle.api.internal.changedetection.state.DirContentSnapshot;
-import org.gradle.api.internal.changedetection.state.FileContentSnapshot;
 import org.gradle.api.internal.changedetection.state.NormalizedFileSnapshot;
 import org.gradle.api.internal.changedetection.state.mirror.PhysicalSnapshot;
 import org.gradle.api.internal.changedetection.state.mirror.PhysicalSnapshotVisitor;
@@ -43,7 +42,7 @@ public class RelativePathFingerprintingStrategy implements FingerprintingStrateg
                     boolean isRoot = relativePathHolder.isRoot();
                     relativePathHolder.enter(directorySnapshot);
                     if (processedEntries.add(directorySnapshot.getAbsolutePath())) {
-                        NormalizedFileSnapshot snapshot = isRoot ? DirContentSnapshot.INSTANCE : new DefaultNormalizedFileSnapshot(relativePathHolder.getRelativePathString(), DirContentSnapshot.INSTANCE);
+                        NormalizedFileSnapshot snapshot = isRoot ? DirContentSnapshot.INSTANCE : new DefaultNormalizedFileSnapshot(relativePathHolder.getRelativePathString(), directorySnapshot);
                         builder.put(directorySnapshot.getAbsolutePath(), snapshot);
                     }
                     return true;
@@ -52,7 +51,7 @@ public class RelativePathFingerprintingStrategy implements FingerprintingStrateg
                 @Override
                 public void visit(PhysicalSnapshot fileSnapshot) {
                     if (processedEntries.add(fileSnapshot.getAbsolutePath())) {
-                        NormalizedFileSnapshot normalizedFileSnapshot = relativePathHolder.isRoot() ? new DefaultNormalizedFileSnapshot(fileSnapshot.getName(), fileSnapshot.getContent()) : createNormalizedFileSnapshot(fileSnapshot.getName(), fileSnapshot.getContent());
+                        NormalizedFileSnapshot normalizedFileSnapshot = relativePathHolder.isRoot() ? new DefaultNormalizedFileSnapshot(fileSnapshot.getName(), fileSnapshot) : createNormalizedFileSnapshot(fileSnapshot);
                         builder.put(
                             fileSnapshot.getAbsolutePath(),
                             normalizedFileSnapshot
@@ -60,9 +59,9 @@ public class RelativePathFingerprintingStrategy implements FingerprintingStrateg
                     }
                 }
 
-                private NormalizedFileSnapshot createNormalizedFileSnapshot(String name, FileContentSnapshot content) {
-                    relativePathHolder.enter(name);
-                    NormalizedFileSnapshot normalizedFileSnapshot = new DefaultNormalizedFileSnapshot(relativePathHolder.getRelativePathString(), content);
+                private NormalizedFileSnapshot createNormalizedFileSnapshot(PhysicalSnapshot fileSnapshot) {
+                    relativePathHolder.enter(fileSnapshot.getName());
+                    NormalizedFileSnapshot normalizedFileSnapshot = new DefaultNormalizedFileSnapshot(relativePathHolder.getRelativePathString(), fileSnapshot);
                     relativePathHolder.leave();
                     return normalizedFileSnapshot;
                 }
