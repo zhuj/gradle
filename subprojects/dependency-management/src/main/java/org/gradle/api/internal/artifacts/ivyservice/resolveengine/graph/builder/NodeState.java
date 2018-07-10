@@ -63,6 +63,7 @@ class NodeState implements DependencyGraphNode {
     private final ResolveState resolveState;
     private final boolean isTransitive;
     private ModuleExclusion previousTraversalExclusions;
+    private boolean queued;
 
     NodeState(Long resultId, ResolvedConfigurationIdentifier id, ComponentState component, ResolveState resolveState, ConfigurationMetadata md) {
         this.resultId = resultId;
@@ -72,6 +73,21 @@ class NodeState implements DependencyGraphNode {
         this.metaData = md;
         this.isTransitive = metaData.isTransitive();
         component.addConfiguration(this);
+    }
+
+    // the enqueue and dequeue methods are used for performance reasons
+    // in order to avoid tracking the set of enqueued nodes
+    boolean enqueue() {
+        if (queued) {
+            return false;
+        }
+        queued = true;
+        return true;
+    }
+
+    NodeState dequeue() {
+        queued = false;
+        return this;
     }
 
     ComponentState getComponent() {
@@ -344,9 +360,11 @@ class NodeState implements DependencyGraphNode {
     }
 
     void resetSelectionState() {
-        previousTraversalExclusions = null;
-        outgoingEdges.clear();
-        resolveState.onMoreSelected(this);
+        if (previousTraversalExclusions != null) {
+            previousTraversalExclusions = null;
+            outgoingEdges.clear();
+            resolveState.onMoreSelected(this);
+        }
     }
 
     public ImmutableAttributesFactory getAttributesFactory() {
