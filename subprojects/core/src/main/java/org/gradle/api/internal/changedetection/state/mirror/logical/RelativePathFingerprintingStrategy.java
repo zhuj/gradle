@@ -18,11 +18,11 @@ package org.gradle.api.internal.changedetection.state.mirror.logical;
 
 import com.google.common.collect.ImmutableMap;
 import org.gradle.api.internal.changedetection.state.DefaultNormalizedFileSnapshot;
-import org.gradle.api.internal.changedetection.state.DirContentSnapshot;
 import org.gradle.api.internal.changedetection.state.NormalizedFileSnapshot;
 import org.gradle.api.internal.changedetection.state.mirror.PhysicalSnapshot;
 import org.gradle.api.internal.changedetection.state.mirror.PhysicalSnapshotVisitor;
 import org.gradle.api.internal.changedetection.state.mirror.RelativePathHolder;
+import org.gradle.internal.fingerprint.IgnoredPathFingerprint;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -42,7 +42,7 @@ public class RelativePathFingerprintingStrategy implements FingerprintingStrateg
                     boolean isRoot = relativePathHolder.isRoot();
                     relativePathHolder.enter(directorySnapshot);
                     if (processedEntries.add(directorySnapshot.getAbsolutePath())) {
-                        NormalizedFileSnapshot snapshot = isRoot ? DirContentSnapshot.INSTANCE : new DefaultNormalizedFileSnapshot(relativePathHolder.getRelativePathString(), directorySnapshot);
+                        NormalizedFileSnapshot snapshot = isRoot ? IgnoredPathFingerprint.DIRECTORY : new DefaultNormalizedFileSnapshot(relativePathHolder.getRelativePathString(), directorySnapshot);
                         builder.put(directorySnapshot.getAbsolutePath(), snapshot);
                     }
                     return true;
