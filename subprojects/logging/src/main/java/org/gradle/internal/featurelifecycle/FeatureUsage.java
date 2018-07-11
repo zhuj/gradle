@@ -25,11 +25,15 @@ import java.util.List;
  */
 public class FeatureUsage {
     private final String message;
+    private final String warningMessage;
+    private final String advice;
     private final List<StackTraceElement> stack;
     private final Class<?> calledFrom;
 
-    public FeatureUsage(String message, Class<?> calledFrom) {
+    public FeatureUsage(String message, String warningMessage, String advice, Class<?> calledFrom) {
         this.message = message;
+        this.warningMessage = warningMessage;
+        this.advice = advice;
         this.calledFrom = calledFrom;
         this.stack = Collections.emptyList();
     }
@@ -39,12 +43,22 @@ public class FeatureUsage {
             throw new NullPointerException("stack");
         }
         this.message = usage.message;
+        this.warningMessage = usage.warningMessage;
+        this.advice = usage.advice;
         this.calledFrom = usage.calledFrom;
         this.stack = Collections.unmodifiableList(new ArrayList<StackTraceElement>(stack));
     }
 
     public String getMessage() {
         return message;
+    }
+
+    public String getWarningMessage() {
+        return warningMessage;
+    }
+
+    public String getAdvice() {
+        return advice;
     }
 
     public List<StackTraceElement> getStack() {
@@ -99,5 +113,16 @@ public class FeatureUsage {
             }
         }
         return caller;
+    }
+
+    String formattedMessage() {
+        StringBuilder outputBuilder = new StringBuilder(message);
+        if (warningMessage != null) {
+            outputBuilder.append(" ").append(warningMessage);
+        }
+        if (advice != null) {
+            outputBuilder.append(" ").append(advice);
+        }
+        return outputBuilder.toString();
     }
 }
