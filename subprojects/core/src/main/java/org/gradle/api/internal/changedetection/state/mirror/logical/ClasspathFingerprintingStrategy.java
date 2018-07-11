@@ -152,7 +152,7 @@ public class ClasspathFingerprintingStrategy implements FingerprintingStrategy {
 
         @Override
         public void visit(PhysicalSnapshot fileSnapshot) {
-            if (fileSnapshot.getContent().getType() == FileType.RegularFile) {
+            if (fileSnapshot.getType() == FileType.RegularFile) {
                 HashCode normalizedContent = fingerprintFile((PhysicalFileSnapshot) fileSnapshot);
                 if (normalizedContent != null) {
                     delegate.visit(fileSnapshot, normalizedContent);
@@ -173,8 +173,7 @@ public class ClasspathFingerprintingStrategy implements FingerprintingStrategy {
             if (shouldBeIgnored) {
                 return null;
             }
-            HashCode newHash = classpathResourceHasher.hash(fileSnapshot);
-            return newHash;
+            return classpathResourceHasher.hash(fileSnapshot);
         }
 
         @Override
@@ -189,7 +188,7 @@ public class ClasspathFingerprintingStrategy implements FingerprintingStrategy {
         if (FileUtils.hasExtensionIgnoresCase(fileSnapshot.getName(), ".jar")) {
             return snapshotJarContents(fileSnapshot);
         }
-        return nonJarFingerprintingStrategy.determineNonJarFingerprint(fileSnapshot.getContent().getContentMd5());
+        return nonJarFingerprintingStrategy.determineNonJarFingerprint(fileSnapshot.getContentHash());
     }
 
     @Nullable
