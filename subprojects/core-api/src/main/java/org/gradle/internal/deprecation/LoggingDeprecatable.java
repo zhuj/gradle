@@ -40,7 +40,7 @@ public class LoggingDeprecatable implements Deprecatable {
     public void checkDeprecation() {
         String suffix = LoggingDeprecatedFeatureHandler.getRemovalWarningMessage();
         for (String deprecation : deprecations) {
-            DeprecationLogger.nagUserWith(String.format("%s has been deprecated.", deprecation), suffix, null);
+            DeprecationLogger.nagUserWith(String.format("%s has been deprecated.", deprecation), String.format("This %s", suffix), null);
         }
     }
 

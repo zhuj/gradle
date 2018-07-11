@@ -93,7 +93,7 @@ public class SingleMessageLogger {
 
     public static void nagUserOfReplacedMethod(String methodName, String replacement) {
         if (isEnabled()) {
-            nagUserWith(String.format("The %s method has been deprecated", methodName), thisWillBeRemovedMessage(), String.format("Please use the %s method instead.", replacement));
+            nagUserWith(String.format("The %s method has been deprecated.", methodName), thisWillBeRemovedMessage(), String.format("Please use the %s method instead.", replacement));
         }
     }
 
@@ -124,7 +124,7 @@ public class SingleMessageLogger {
 
     public static void nagUserOfDiscontinuedApi(String api, String advice) {
         if (isEnabled()) {
-            nagUserWith(String.format("The %s.", api), thisWillBeRemovedMessage(), advice);
+            nagUserWith(String.format("The %s has been deprecated.", api), thisWillBeRemovedMessage(), advice);
         }
     }
 
@@ -170,25 +170,31 @@ public class SingleMessageLogger {
      */
     public static void nagUserOfDeprecated(String thing) {
         if (isEnabled()) {
-            nagUserWith(thing, getRemovalWarningMessage(), null);
+            nagUserWith(String.format("%s has been deprecated.", thing), thisWillBeRemovedMessage(), null);
         }
     }
 
-    public static void nagUserOfDeprecated(String thing, String explanation) {
+    public static void nagUserOfDeprecated(String thing, String advice) {
         if (isEnabled()) {
-            nagUserWith(String.format("%s has been deprecated.", thing), thisWillBeRemovedMessage(), explanation);
+            nagUserWith(String.format("%s has been deprecated.", thing), thisWillBeRemovedMessage(), advice);
         }
     }
 
     public static void nagUserOfDeprecatedBehaviour(String behaviour) {
         if (isEnabled()) {
-            nagUserWith(behaviour, String.format("This behaviour %s", getRemovalWarningMessage(), null));
+            nagUserWith(behaviour, String.format("This behaviour has been deprecated and %s", getRemovalWarningMessage()), null);
         }
     }
 
-    public static void nagUserOfDeprecatedThing(String thing, String explanation) {
+    public static void nagUserOfDeprecatedThing(String thing) {
         if (isEnabled()) {
-            nagUserWith(thing, String.format("Support for this %s", getRemovalWarningMessage()), explanation);
+            nagUserWith(thing, String.format("This has been deprecated and %s", getRemovalWarningMessage()), null);
+        }
+    }
+
+    public static void nagUserOfDeprecatedThing(String thing, String advice) {
+        if (isEnabled()) {
+            nagUserWith(thing, String.format("This has been deprecated and %s", getRemovalWarningMessage()), advice);
         }
     }
 

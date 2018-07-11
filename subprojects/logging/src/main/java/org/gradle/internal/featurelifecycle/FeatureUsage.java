@@ -16,6 +16,8 @@
 
 package org.gradle.internal.featurelifecycle;
 
+import org.apache.commons.lang.StringUtils;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -115,12 +117,12 @@ public class FeatureUsage {
         return caller;
     }
 
-    String formattedMessage() {
+    public String formattedMessage() {
         StringBuilder outputBuilder = new StringBuilder(message);
-        if (warningMessage != null) {
+        if (!StringUtils.isEmpty(warningMessage)) {
             outputBuilder.append(" ").append(warningMessage);
         }
-        if (advice != null) {
+        if (!StringUtils.isEmpty(advice)) {
             outputBuilder.append(" ").append(advice);
         }
         return outputBuilder.toString();

@@ -30,7 +30,7 @@ public interface TaskValidationContext {
         WARNING() {
             @Override
             public boolean report(Task task, List<String> messages, TaskStateInternal state) {
-                String deprecationMessage = String.format("%s Registering invalid inputs and outputs via TaskInputs and TaskOutputs methods.", getMainMessage(task, messages));
+                String deprecationMessage = String.format("%s Registering invalid inputs and outputs via TaskInputs and TaskOutputs methods has been deprecated.", getMainMessage(task, messages));
                 StringBuilder builder = new StringBuilder();
                 for (String message : messages) {
                     builder.append("\n - ");
