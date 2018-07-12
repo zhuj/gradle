@@ -16,6 +16,7 @@
 
 package org.gradle.internal.operations.trace;
 
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import org.gradle.api.artifacts.result.DependencyResult;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
@@ -51,7 +52,7 @@ class SerializedOperationFinish implements SerializedOperation {
             ResolveConfigurationDependenciesBuildOperationType.Result cast = (ResolveConfigurationDependenciesBuildOperationType.Result) result;
             ImmutableMap.Builder<String, Object> builder = ImmutableMap.builder();
             builder.put("resolvedDependenciesCount", cast.getRootComponent().getDependencies().size());
-            ImmutableMap.Builder<String, Object> components = ImmutableMap.builder();
+            ImmutableListMultimap.Builder<String, Object> components = ImmutableListMultimap.builder();
             walk(cast.getRootComponent(), components);
             builder.put("components", components.build());
             return builder.build();
@@ -60,7 +61,7 @@ class SerializedOperationFinish implements SerializedOperation {
         return result;
     }
 
-    private void walk(ResolvedComponentResult component, ImmutableMap.Builder<String, Object> components) {
+    private void walk(ResolvedComponentResult component, ImmutableListMultimap.Builder<String, Object> components) {
         components.put(component.getId().getDisplayName(), Collections.singletonMap("repoId", component.getRepositoryId()));
         for (DependencyResult dependencyResult : component.getDependencies()) {
             if (dependencyResult instanceof ResolvedDependencyResult) {
