@@ -17,6 +17,9 @@
 package org.gradle.internal.operations.trace;
 
 import com.google.common.collect.ImmutableMap;
+import org.gradle.api.artifacts.result.DependencyResult;
+import org.gradle.api.artifacts.result.ResolvedComponentResult;
+import org.gradle.api.artifacts.result.ResolvedDependencyResult;
 import org.gradle.api.internal.artifacts.configurations.ResolveConfigurationDependenciesBuildOperationType;
 import org.gradle.internal.operations.BuildOperationDescriptor;
 import org.gradle.internal.operations.OperationFinishEvent;
@@ -46,10 +49,24 @@ class SerializedOperationFinish implements SerializedOperation {
     private Object transform(Object result) {
         if (result instanceof ResolveConfigurationDependenciesBuildOperationType.Result) {
             ResolveConfigurationDependenciesBuildOperationType.Result cast = (ResolveConfigurationDependenciesBuildOperationType.Result) result;
-            return Collections.singletonMap("resolvedDependenciesCount", cast.getRootComponent().getDependencies().size());
+            ImmutableMap.Builder<String, Object> builder = ImmutableMap.builder();
+            builder.put("resolvedDependenciesCount", cast.getRootComponent().getDependencies().size());
+            ImmutableMap.Builder<String, Object> components = ImmutableMap.builder();
+            walk(cast.getRootComponent(), components);
+            builder.put("components", components.build());
+            return builder.build();
         }
 
         return result;
+    }
+
+    private void walk(ResolvedComponentResult component, ImmutableMap.Builder<String, Object> components) {
+        components.put(component.getId().getDisplayName(), Collections.singletonMap("repoId", component.getRepositoryId()));
+        for (DependencyResult dependencyResult : component.getDependencies()) {
+            if (dependencyResult instanceof ResolvedDependencyResult) {
+                walk(((ResolvedDependencyResult) dependencyResult).getSelected(), components);
+            }
+        }
     }
 
     SerializedOperationFinish(Map<String, ?> map) {

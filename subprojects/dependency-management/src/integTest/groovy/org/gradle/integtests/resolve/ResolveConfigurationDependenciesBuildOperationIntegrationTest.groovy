@@ -20,7 +20,9 @@ import org.gradle.api.internal.artifacts.configurations.ResolveConfigurationDepe
 import org.gradle.integtests.fixtures.AbstractHttpDependencyResolutionTest
 import org.gradle.integtests.fixtures.BuildOperationNotificationsFixture
 import org.gradle.integtests.fixtures.BuildOperationsFixture
+import org.gradle.test.fixtures.maven.MavenFileRepository
 import org.gradle.test.fixtures.server.http.MavenHttpModule
+import org.gradle.test.fixtures.server.http.MavenHttpRepository
 import spock.lang.Unroll
 
 class ResolveConfigurationDependenciesBuildOperationIntegrationTest extends AbstractHttpDependencyResolutionTest {
@@ -53,8 +55,8 @@ class ResolveConfigurationDependenciesBuildOperationIntegrationTest extends Abst
         """
         settingsFile << "include 'child'"
         def m1 = mavenHttpRepo.module('org.foo', 'hiphop').publish()
-        def m2 = mavenHttpRepo.module('org.foo', 'unknown');
-        def m3 = mavenHttpRepo.module('org.foo', 'broken');
+        def m2 = mavenHttpRepo.module('org.foo', 'unknown')
+        def m3 = mavenHttpRepo.module('org.foo', 'broken')
         def m4 = mavenHttpRepo.module('org.foo', 'rock').dependsOn(m3).publish()
 
         m1.allowAll()
@@ -474,5 +476,59 @@ class ResolveConfigurationDependenciesBuildOperationIntegrationTest extends Abst
         op.details.configurationName == "compile"
         op.failure == "org.gradle.api.artifacts.ResolveException: Could not resolve all dependencies for configuration ':compile'."
         op.result == null
+    }
+
+    def "resolved components contain their source repository id"() {
+        setup:
+        def secondMavenHttpRepo = new MavenHttpRepository(server, '/repo-2', new MavenFileRepository(file('maven-repo-2')))
+        buildFile << """                
+            apply plugin: "java"
+            repositories {
+                maven { 
+                    name 'maven1'
+                    url 'http://dead-end'
+                }
+                maven { 
+                    name 'maven2'
+                    url '${secondMavenHttpRepo.uri}'
+                }
+                maven { 
+                    name 'maven3'
+                    url '${mavenHttpRepo.uri}'
+                }
+            }
+            dependencies {
+                compile 'org.foo:hiphop:1.0'
+                compile 'org.foo:unknown:1.0' //does not exist
+                compile project(":child")
+                compile 'org.foo:rock:1.0' //contains unresolved transitive dependency
+            }
+
+            task resolve { doLast { configurations.compile.resolve() } }
+        """
+        settingsFile << "include 'child'"
+        mavenHttpRepo.module('org.foo', 'hiphop').publish().allowAll()
+        secondMavenHttpRepo.module('org.foo', 'hiphop').allowAll()
+        mavenHttpRepo.module('org.foo', 'unknown').allowAll()
+        secondMavenHttpRepo.module('org.foo', 'unknown').allowAll()
+        def m1 = secondMavenHttpRepo.module('org.foo', 'broken')
+        m1.pom.expectGetBroken()
+        def m2 = secondMavenHttpRepo.module('org.foo', 'transitive').publish()
+        m2.allowAll()
+        secondMavenHttpRepo.module('org.foo', 'rock').dependsOn(m1).dependsOn(m2).publish().allowAll()
+
+        when:
+        fails 'resolve'
+
+        then:
+        def op = operations.first(ResolveConfigurationDependenciesBuildOperationType)
+        def repos = op.details.repositories.collectEntries { repo -> [(repo.repositoryId): repo.name] }
+        op.result.resolvedDependenciesCount == 4
+        def resolvedComponents = op.result.components
+        resolvedComponents.size() == 4
+        resolvedComponents.'project :'.repoId == null
+        repos.get(resolvedComponents.'org.foo:hiphop:1.0'.repoId) == 'maven3'
+        repos.get(resolvedComponents.'org.foo:rock:1.0'.repoId) == 'maven2'
+        repos.get(resolvedComponents.'org.foo:transitive:1.0'.repoId) == 'maven2'
     }
 }
